@@ -1,5 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 
 // Force dynamic rendering to avoid SSR context issues
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,20 @@ import { ToastProvider } from "../components/ui/Toast";
 import { AccessibilityProvider } from "../components/ui/AccessibilityProvider";
 import "./globals.css";
 import "../styles/design-system.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.neurolint.dev'),
@@ -262,18 +277,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning={true}>
+    <html lang="en" suppressHydrationWarning={true} className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin=""
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
         <StructuredData type="website" />
         <StructuredData type="organization" />
         <StructuredData type="softwareApplication" />

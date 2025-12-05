@@ -31,13 +31,17 @@ Preferred communication style: Simple, everyday language.
 
 **Primary Database**: Supabase (PostgreSQL)
 - Row-Level Security (RLS) policies for data isolation
-- Database migrations in `/docs/DATABASE_SETUP_COMPLETE.md`
 - Schema includes: profiles, projects, teams, collaboration sessions, billing, webhooks, integrations
+- Requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` environment variables
+
+**Authentication**: Supabase Auth
+- Email/password authentication
+- JWT-based session management
+- Token refresh handling with error recovery
 
 **In-Memory Data Store**: Fallback/development mode using `lib/data-store.ts`
 - Maps for various entities (projects, teams, API keys, webhooks, etc.)
 - Used when Supabase is not configured or in demo mode
-- Includes migration utilities to move from in-memory to Supabase
 
 **API Layer**:
 - Next.js API routes in `/app/api/`

@@ -1,6 +1,8 @@
 import { defineConfig } from "drizzle-kit";
 
-if (!process.env.DATABASE_URL) {
+const connectionString = process.env["DATABASE_URL"];
+
+if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
@@ -9,6 +11,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: connectionString,
   },
 });

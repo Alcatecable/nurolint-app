@@ -1,0 +1,7 @@
+{
+  "originalPath": "next.config.js",
+  "timestamp": 1764912968932,
+  "hash": "ef2e6a46",
+  "operation": "layer-1-config",
+  "content": "/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  experimental: {\n    serverActions: {\n      allowedOrigins: ['*'],\n    },\n  },\n  async headers() {\n    return [\n      {\n        source: '/:path*',\n        headers: [\n          {\n            key: 'Cache-Control',\n            value: 'no-cache, no-store, must-revalidate',\n          },\n        ],\n      },\n    ];\n  },\n  allowedDevOrigins: [\n    'localhost:5000',\n    '*.replit.dev',\n    '*.janeway.replit.dev',\n    '*.repl.co',\n  ],\n  webpack: (config) => {\n    return config;\n  },\n};\n\nmodule.exports = nextConfig;\n"
+}

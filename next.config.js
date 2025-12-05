@@ -4,6 +4,14 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['*'],
     },
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js'
+        }
+      }
+    }
   },
   async headers() {
     return [
@@ -27,6 +35,14 @@ const nextConfig = {
   webpack: (config) => {
     return config;
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  }
 };
 
 module.exports = nextConfig;

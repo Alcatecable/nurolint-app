@@ -1,0 +1,7 @@
+{
+  "originalPath": "package.json",
+  "timestamp": 1764912968933,
+  "hash": "35ef1f4d",
+  "operation": "layer-1-config",
+  "content": "{\n  \"name\": \"nurolint-app\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"scripts\": {\n    \"dev\": \"next dev -p 5000 -H 0.0.0.0\",\n    \"build\": \"next build\",\n    \"start\": \"next start -p 5000 -H 0.0.0.0\",\n    \"lint\": \"next lint\",\n    \"db:push\": \"drizzle-kit push\",\n    \"db:studio\": \"drizzle-kit studio\"\n  },\n  \"dependencies\": {\n    \"@babel/generator\": \"^7.28.5\",\n    \"@babel/parser\": \"^7.28.5\",\n    \"@babel/traverse\": \"^7.28.5\",\n    \"@babel/types\": \"^7.28.5\",\n    \"@supabase/supabase-js\": \"^2.45.0\",\n    \"@types/pg\": \"^8.15.6\",\n    \"@vercel/analytics\": \"^1.3.1\",\n    \"@vercel/speed-insights\": \"^1.0.12\",\n    \"class-variance-authority\": \"^0.7.0\",\n    \"clsx\": \"^2.1.1\",\n    \"drizzle-kit\": \"^0.31.8\",\n    \"drizzle-orm\": \"^0.45.0\",\n    \"glob\": \"^13.0.0\",\n    \"next\": \"^14.2.5\",\n    \"pg\": \"^8.16.3\",\n    \"react\": \"^18.3.1\",\n    \"react-dom\": \"^18.3.1\",\n    \"tailwind-merge\": \"^2.4.0\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^20.14.0\",\n    \"@types/react\": \"^18.3.3\",\n    \"@types/react-dom\": \"^18.3.0\",\n    \"autoprefixer\": \"^10.4.19\",\n    \"postcss\": \"^8.4.38\",\n    \"tailwindcss\": \"^3.4.4\",\n    \"typescript\": \"^5.5.2\"\n  }\n}\n"
+}

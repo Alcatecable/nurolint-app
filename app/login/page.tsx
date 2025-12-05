@@ -49,7 +49,7 @@ export default function LoginPage() {
               if (tokenParts.length !== 3) {
                 throw new Error('Invalid JWT token format');
               }
-              const base64Payload = tokenParts[1];
+              const base64Payload = tokenParts[1]!;
               // Add padding if needed
               const paddedPayload = base64Payload + '='.repeat((4 - base64Payload.length % 4) % 4);
               const decodedPayload = atob(paddedPayload.replace(/-/g, '+').replace(/_/g, '/'));
@@ -187,7 +187,7 @@ export default function LoginPage() {
       // Handle rate limiting specifically
       if (err instanceof Error && err.message.includes("Too many")) {
         const waitMatch = err.message.match(/(\d+)\s+minutes?/);
-        if (waitMatch) {
+        if (waitMatch && waitMatch[1]) {
           const minutes = parseInt(waitMatch[1]);
           setWaitTime(minutes * 60);
           // Start countdown timer

@@ -27,9 +27,13 @@ const nextConfig = {
     ];
   },
   allowedDevOrigins: [
+    '127.0.0.1',
+    '127.0.0.1:5000',
+    'localhost',
     'localhost:5000',
     '*.replit.dev',
     '*.janeway.replit.dev',
+    '*.picard.replit.dev',
     '*.repl.co',
   ],
   webpack: (config) => {

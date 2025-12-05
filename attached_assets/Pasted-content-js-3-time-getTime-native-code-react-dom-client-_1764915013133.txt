@@ -1,0 +1,30 @@
+content.js:3 time: ƒ getTime() { [native code] }
+react-dom-client.development.js:25631 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+client-logger.ts:147 [INFO] checkSession setting loading to false Object
+client-logger.ts:147 [INFO] checkSession setting loading to false Object
+script.debug.js:1 [Vercel Web Analytics] Debug mode is enabled by default in development. No requests will be sent to the server.
+script.debug.js:1 [Vercel Web Analytics] Running queued event pageview Object
+script.debug.js:1 [Vercel Web Analytics] [pageview] https://c18d46b2-4ed7-4ce1-82ca-baa983158666-00-2iv0sj0udqqcv.picard.replit.dev/ Object
+script.debug.js:1 [Vercel Speed Insights] Debug mode is enabled by default in development. No requests will be sent to the server.
+PerformanceMonitor.tsx:53 LCP: 4300
+PerformanceMonitor.tsx:134 TTFB: 729.3000000119209
+PerformanceMonitor.tsx:172 Page Load Metrics: Object
+/favicon.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+PerformanceMonitor.tsx:72 FID: 0.6000000238418579
+PerformanceMonitor.tsx:94 CLS: 0
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+hot-reloader-app.js:197 [Fast Refresh] rebuilding
+report-hmr-latency.js:14 [Fast Refresh] done in 1891ms
+/api/auth/login:1  Failed to load resource: the server responded with a status of 401 (Unauthorized)
+PerformanceMonitor.tsx:203 Slow Resource: Object
+auth-context.tsx:250 [AUTH] Forcing loading state to false after 15 seconds
+AuthProvider.useEffect.fallbackTimeout @ auth-context.tsx:250
+PerformanceMonitor.tsx:94 CLS: 0

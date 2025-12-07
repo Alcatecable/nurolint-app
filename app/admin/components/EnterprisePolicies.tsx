@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 interface PolicyRule {
   id: string;
@@ -24,158 +24,142 @@ interface TeamControl {
   category: string;
 }
 
-export default function EnterprisePolicies() {
+interface AuditEntry {
+  id: string;
+  action: string;
+  user: string;
+  target: string;
+  timestamp: Date;
+}
+
+interface EnterprisePoliciesProps {
+  teamId?: string;
+}
+
+export default function EnterprisePolicies({ teamId }: EnterprisePoliciesProps = {}) {
   const [activeTab, setActiveTab] = useState<"rules" | "controls" | "audit">("rules");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [policyRules, setPolicyRules] = useState<PolicyRule[]>([
-    {
-      id: "1",
-      name: "Require React 18+ Patterns",
-      description: "Enforce modern React patterns including concurrent features and automatic batching",
-      category: 'quality',
-      severity: 'warning',
-      enabled: true,
-      autoFix: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "2",
-      name: "No Console Statements",
-      description: "Prevent console.log and other console methods in production code",
-      category: 'quality',
-      severity: 'error',
-      enabled: true,
-      autoFix: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "3",
-      name: "Accessibility Standards",
-      description: "Enforce WCAG 2.1 AA accessibility requirements for all components",
-      category: 'compliance',
-      severity: 'error',
-      enabled: true,
-      autoFix: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "4",
-      name: "TypeScript Strict Mode",
-      description: "Require strict TypeScript configuration with no implicit any",
-      category: 'quality',
-      severity: 'error',
-      enabled: false,
-      autoFix: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "5",
-      name: "Performance Budget",
-      description: "Enforce bundle size limits and lazy loading for large components",
-      category: 'performance',
-      severity: 'warning',
-      enabled: true,
-      autoFix: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: "6",
-      name: "Security Headers",
-      description: "Validate proper security headers and prevent XSS vulnerabilities",
-      category: 'security',
-      severity: 'error',
-      enabled: true,
-      autoFix: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ]);
+  const [policyRules, setPolicyRules] = useState<PolicyRule[]>([]);
+  const [teamControls, setTeamControls] = useState<TeamControl[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
-  const [teamControls, setTeamControls] = useState<TeamControl[]>([
-    {
-      id: "1",
-      name: "Auto-fix on Analysis",
-      description: "Automatically apply safe fixes when running code analysis",
-      type: 'boolean',
-      value: true,
-      category: "Analysis"
-    },
-    {
-      id: "2",
-      name: "Require PR Approval",
-      description: "Require team lead approval before merging auto-generated PRs",
-      type: 'boolean',
-      value: true,
-      category: "Git Integration"
-    },
-    {
-      id: "3",
-      name: "Maximum Issues Per PR",
-      description: "Limit the number of issues fixed in a single pull request",
-      type: 'number',
-      value: 25,
-      category: "Git Integration"
-    },
-    {
-      id: "4",
-      name: "Default Scan Scope",
-      description: "Default scope for repository scans",
-      type: 'select',
-      value: "changed-files",
-      options: ["all-files", "changed-files", "staged-files"],
-      category: "Analysis"
-    },
-    {
-      id: "5",
-      name: "Notify on Critical Issues",
-      description: "Send notifications when critical issues are detected",
-      type: 'boolean',
-      value: true,
-      category: "Notifications"
-    },
-    {
-      id: "6",
-      name: "Block Merge on Errors",
-      description: "Prevent merging when error-level issues exist",
-      type: 'boolean',
-      value: false,
-      category: "Git Integration"
+  const fetchPolicies = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const params = new URLSearchParams();
+      if (teamId) params.append('teamId', teamId);
+      
+      const [policiesRes, auditRes] = await Promise.all([
+        fetch(`/api/rules/policies?${params.toString()}`),
+        fetch(`/api/admin/audit-log?${params.toString()}`)
+      ]);
+      
+      if (policiesRes.ok) {
+        const policiesData = await policiesRes.json();
+        if (policiesData.success) {
+          setPolicyRules(policiesData.policyRules.map((r: PolicyRule & { createdAt: string; updatedAt: string }) => ({
+            ...r,
+            createdAt: new Date(r.createdAt),
+            updatedAt: new Date(r.updatedAt)
+          })));
+          setTeamControls(policiesData.teamControls || []);
+        }
+      }
+      
+      if (auditRes.ok) {
+        const auditData = await auditRes.json();
+        if (auditData.success) {
+          setAuditLog(auditData.auditLog.map((entry: AuditEntry & { timestamp: string }) => ({
+            ...entry,
+            timestamp: new Date(entry.timestamp)
+          })));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching policies:', err);
+      setError('Unable to load policy data');
+    } finally {
+      setIsLoading(false);
     }
-  ]);
-
-  const [auditLog] = useState([
-    { id: "1", action: "Policy Updated", user: "admin@company.com", target: "Require React 18+ Patterns", timestamp: new Date() },
-    { id: "2", action: "Control Changed", user: "admin@company.com", target: "Auto-fix on Analysis", timestamp: new Date(Date.now() - 3600000) },
-    { id: "3", action: "Policy Enabled", user: "admin@company.com", target: "Security Headers", timestamp: new Date(Date.now() - 86400000) },
-    { id: "4", action: "Policy Created", user: "admin@company.com", target: "Performance Budget", timestamp: new Date(Date.now() - 172800000) }
-  ]);
+  }, [teamId]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchPolicies();
+  }, [fetchPolicies]);
 
-  const toggleRule = (ruleId: string) => {
+  const toggleRule = async (ruleId: string) => {
+    const rule = policyRules.find(r => r.id === ruleId);
+    if (!rule) return;
+    
+    const previousEnabled = rule.enabled;
+    const newEnabled = !rule.enabled;
+    
     setPolicyRules(rules => 
-      rules.map(rule => 
-        rule.id === ruleId ? { ...rule, enabled: !rule.enabled, updatedAt: new Date() } : rule
+      rules.map(r => 
+        r.id === ruleId ? { ...r, enabled: newEnabled, updatedAt: new Date() } : r
       )
     );
+
+    try {
+      const response = await fetch('/api/rules/policies', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruleId, teamId, enabled: newEnabled, autoFix: rule.autoFix })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update rule');
+      }
+    } catch (err) {
+      console.error('Failed to update rule:', err);
+      setPolicyRules(rules => 
+        rules.map(r => 
+          r.id === ruleId ? { ...r, enabled: previousEnabled } : r
+        )
+      );
+      setError('Failed to update policy. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    }
   };
 
-  const toggleAutoFix = (ruleId: string) => {
+  const toggleAutoFix = async (ruleId: string) => {
+    const rule = policyRules.find(r => r.id === ruleId);
+    if (!rule) return;
+    
+    const previousAutoFix = rule.autoFix;
+    const newAutoFix = !rule.autoFix;
+    
     setPolicyRules(rules => 
-      rules.map(rule => 
-        rule.id === ruleId ? { ...rule, autoFix: !rule.autoFix, updatedAt: new Date() } : rule
+      rules.map(r => 
+        r.id === ruleId ? { ...r, autoFix: newAutoFix, updatedAt: new Date() } : r
       )
     );
+
+    try {
+      const response = await fetch('/api/rules/policies', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruleId, teamId, enabled: rule.enabled, autoFix: newAutoFix })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update autofix');
+      }
+    } catch (err) {
+      console.error('Failed to update autofix:', err);
+      setPolicyRules(rules => 
+        rules.map(r => 
+          r.id === ruleId ? { ...r, autoFix: previousAutoFix } : r
+        )
+      );
+      setError('Failed to update auto-fix setting. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    }
   };
 
   const updateControl = (controlId: string, value: boolean | number | string) => {
@@ -260,6 +244,39 @@ export default function EnterprisePolicies() {
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="enterprise-policies-root">
+        <div className="error-state">
+          <p>{error}</p>
+          <button onClick={fetchPolicies} className="retry-btn">Try Again</button>
+        </div>
+        <style jsx>{`
+          .enterprise-policies-root {
+            padding: 2rem;
+          }
+          .error-state {
+            text-align: center;
+            padding: 3rem;
+            color: rgba(255, 255, 255, 0.7);
+          }
+          .retry-btn {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid #000000;
+            border-radius: 8px;
+            color: #ffffff;
+            cursor: pointer;
+          }
+          .retry-btn:hover {
+            background: rgba(33, 150, 243, 0.3);
           }
         `}</style>
       </div>

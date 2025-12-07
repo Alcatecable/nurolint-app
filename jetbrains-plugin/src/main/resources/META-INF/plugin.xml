@@ -1,0 +1,110 @@
+<idea-plugin>
+    <id>com.neurolint.plugin</id>
+    <name>NeuroLint</name>
+    <version>1.0.0</version>
+    <vendor email="support@neurolint.io" url="https://neurolint.io">NeuroLint</vendor>
+
+    <description><![CDATA[
+        <h2>NeuroLint - AI-Powered Code Analysis</h2>
+        <p>Enterprise-grade code analysis and automated fixes for your React, Next.js, and TypeScript projects.</p>
+        
+        <h3>Features:</h3>
+        <ul>
+            <li>7-layer deep code analysis</li>
+            <li>Automatic code fixes and improvements</li>
+            <li>React 18+ pattern enforcement</li>
+            <li>Accessibility compliance checking</li>
+            <li>Performance optimization suggestions</li>
+            <li>Security vulnerability detection</li>
+            <li>Team collaboration and analytics</li>
+        </ul>
+        
+        <h3>Enterprise Features:</h3>
+        <ul>
+            <li>API key authentication for enterprise teams</li>
+            <li>Custom rule configuration</li>
+            <li>CI/CD integration support</li>
+            <li>Detailed analytics and reporting</li>
+        </ul>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <h3>Version 1.0.0</h3>
+        <ul>
+            <li>Initial release</li>
+            <li>File and project analysis</li>
+            <li>Quick fix suggestions</li>
+            <li>Settings panel for API configuration</li>
+            <li>Real-time analysis results panel</li>
+        </ul>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable
+            parentId="tools"
+            instance="com.neurolint.plugin.settings.NeuroLintConfigurable"
+            id="com.neurolint.plugin.settings.NeuroLintConfigurable"
+            displayName="NeuroLint"/>
+        
+        <applicationService
+            serviceImplementation="com.neurolint.plugin.settings.NeuroLintSettings"/>
+        
+        <applicationService
+            serviceImplementation="com.neurolint.plugin.services.NeuroLintService"/>
+        
+        <toolWindow
+            id="NeuroLint"
+            secondary="true"
+            icon="/icons/neurolint.svg"
+            anchor="right"
+            factoryClass="com.neurolint.plugin.ui.NeuroLintToolWindowFactory"/>
+        
+        <notificationGroup
+            id="NeuroLint Notifications"
+            displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <group id="NeuroLint.Menu" text="NeuroLint" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            
+            <action id="NeuroLint.AnalyzeFile"
+                class="com.neurolint.plugin.actions.AnalyzeFileAction"
+                text="Analyze Current File"
+                description="Run NeuroLint analysis on the current file"
+                icon="/icons/analyze.svg">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt N"/>
+            </action>
+            
+            <action id="NeuroLint.AnalyzeProject"
+                class="com.neurolint.plugin.actions.AnalyzeProjectAction"
+                text="Analyze Project"
+                description="Run NeuroLint analysis on the entire project">
+            </action>
+            
+            <action id="NeuroLint.ApplyFixes"
+                class="com.neurolint.plugin.actions.ApplyFixesAction"
+                text="Apply All Fixes"
+                description="Apply all suggested NeuroLint fixes">
+            </action>
+            
+            <separator/>
+            
+            <action id="NeuroLint.Settings"
+                class="com.neurolint.plugin.actions.OpenSettingsAction"
+                text="Settings"
+                description="Open NeuroLint settings">
+            </action>
+        </group>
+        
+        <action id="NeuroLint.AnalyzeFileEditor"
+            class="com.neurolint.plugin.actions.AnalyzeFileAction"
+            text="Analyze with NeuroLint"
+            description="Run NeuroLint analysis on this file">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

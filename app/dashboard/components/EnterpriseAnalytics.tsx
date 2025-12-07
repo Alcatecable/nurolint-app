@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 
 interface TeamMember {
   id: string;
@@ -37,94 +37,55 @@ export default function EnterpriseAnalytics({ teamId }: EnterpriseAnalyticsProps
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
   const [activeTab, setActiveTab] = useState<"overview" | "team" | "compliance">("overview");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [teamMembers] = useState<TeamMember[]>([
-    {
-      id: "1",
-      name: "Alex Chen",
-      email: "alex@company.com",
-      role: "Lead Engineer",
-      scansThisMonth: 47,
-      issuesFixed: 128,
-      lastActive: new Date(),
-      status: 'online'
-    },
-    {
-      id: "2", 
-      name: "Sarah Kim",
-      email: "sarah@company.com",
-      role: "Senior Developer",
-      scansThisMonth: 35,
-      issuesFixed: 92,
-      lastActive: new Date(Date.now() - 3600000),
-      status: 'away'
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      email: "mike@company.com", 
-      role: "Developer",
-      scansThisMonth: 28,
-      issuesFixed: 67,
-      lastActive: new Date(Date.now() - 86400000),
-      status: 'offline'
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [usageTrends, setUsageTrends] = useState<UsageTrend[]>([]);
+  const [complianceRules, setComplianceRules] = useState<ComplianceRule[]>([]);
+
+  const fetchAnalytics = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const params = new URLSearchParams({ timeRange });
+      if (teamId) params.append('teamId', teamId);
+      
+      const response = await fetch(`/api/analytics/enterprise?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics data');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setTeamMembers(data.teamMembers.map((m: TeamMember & { lastActive: string }) => ({
+          ...m,
+          lastActive: new Date(m.lastActive)
+        })));
+        
+        setUsageTrends(data.usageTrends || []);
+        
+        setComplianceRules(data.complianceRules.map((r: ComplianceRule & { lastChecked: string }) => ({
+          ...r,
+          lastChecked: new Date(r.lastChecked)
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching enterprise analytics:', err);
+      setError('Unable to load analytics data');
+      setTeamMembers([]);
+      setUsageTrends([]);
+      setComplianceRules([]);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
-
-  const [usageTrends] = useState<UsageTrend[]>([
-    { date: "Week 1", scans: 45, issuesFound: 234, issuesFixed: 198 },
-    { date: "Week 2", scans: 52, issuesFound: 267, issuesFixed: 241 },
-    { date: "Week 3", scans: 48, issuesFound: 189, issuesFixed: 176 },
-    { date: "Week 4", scans: 61, issuesFound: 312, issuesFixed: 287 }
-  ]);
-
-  const [complianceRules] = useState<ComplianceRule[]>([
-    {
-      id: "1",
-      name: "React 18 Compatibility",
-      category: "Framework",
-      status: 'passing',
-      lastChecked: new Date(),
-      affectedFiles: 0
-    },
-    {
-      id: "2",
-      name: "Accessibility Standards",
-      category: "A11y",
-      status: 'warning',
-      lastChecked: new Date(),
-      affectedFiles: 12
-    },
-    {
-      id: "3",
-      name: "Security Best Practices",
-      category: "Security",
-      status: 'passing',
-      lastChecked: new Date(),
-      affectedFiles: 0
-    },
-    {
-      id: "4",
-      name: "Performance Patterns",
-      category: "Performance",
-      status: 'warning',
-      lastChecked: new Date(),
-      affectedFiles: 8
-    },
-    {
-      id: "5",
-      name: "TypeScript Strict Mode",
-      category: "Type Safety",
-      status: 'failing',
-      lastChecked: new Date(),
-      affectedFiles: 23
-    }
-  ]);
+  }, [timeRange, teamId]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const metrics = useMemo(() => {
     const totalScans = usageTrends.reduce((sum, t) => sum + t.scans, 0);
@@ -203,6 +164,44 @@ export default function EnterpriseAnalytics({ teamId }: EnterpriseAnalyticsProps
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="enterprise-analytics-root">
+        <div className="error-state">
+          <p>{error}</p>
+          <button onClick={fetchAnalytics} className="retry-btn">Try Again</button>
+        </div>
+        <style jsx>{`
+          .enterprise-analytics-root {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            border: 2px solid #000000;
+            border-radius: 16px;
+          }
+          .error-state {
+            text-align: center;
+            padding: 3rem;
+            color: rgba(255, 255, 255, 0.7);
+          }
+          .retry-btn {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid #000000;
+            border-radius: 8px;
+            color: #ffffff;
+            cursor: pointer;
+          }
+          .retry-btn:hover {
+            background: rgba(33, 150, 243, 0.3);
           }
         `}</style>
       </div>

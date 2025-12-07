@@ -1,0 +1,26 @@
+Task
+
+Review all Enterprise Roadmap features implemented in this session:
+
+AutoPRDashboard (app/dashboard/components/AutoPRDashboard.tsx) - Updated to use real GitHub API with token connection flow, stats from real data, empty states, and refresh functionality
+
+CLI Enterprise Flags (Neurolint-CLI-main/cli.js) - Verify --dry-run, --format=json, and --output flags are production-ready for CI pipelines
+
+DiffViewer Component (app/dashboard/components/DiffViewer.tsx) - New component with unified/split view, LCS diff algorithm, line numbers, stats, and filters
+
+Analytics Section - Review app/dashboard/components/AnalyticsDashboard.tsx, EnterpriseAnalytics.tsx, AdvancedAnalyticsDashboard.tsx for production readiness
+
+Policy Controls - Review app/admin/components/EnterprisePolicies.tsx and RuleManagement.tsx for production readiness
+
+Assess: code quality, TypeScript types, error handling, UI/UX patterns, and any critical issues that need fixing before delivery.
+
+Thought for 9 seconds
+Result
+Fail – multiple critical gaps prevent features from fulfilling requirements.
+AutoPRDashboard: Depends on the consumer manually providing a GitHub token but never offers OAuth/device flow or validates scopes; on failure it surfaces only a generic message and never clears isConnected, so UX can get stuck. More importantly, the backend auto-pr route requires Authorization: Bearer per app/api/integrations/github/auto-pr/route.ts, so providing only x-github-token fails—no PR data ever loads. Statistics (merged/open/etc.) and repository summaries therefore remain zero, meaning the “real data” objective isn’t met. There’s also no pagination or error recovery for GitHub secondary rate limits.
+CLI enterprise flags: Neurolint-CLI-main/cli.js parses --dry-run, --format=json, and --output, but --dry-run still mutates projects because performAnalysis executes real transforms before respecting the flag; --output writes only after run completes without ensuring directory existence or handling stream errors; --format=json prints JSON but mixes it with other console output when verbose logging is on. In CI these flaws break the promised non-destructive dry runs and machine-readable output.
+DiffViewer: Core LCS diff works, but toggling “show changes only” relies on object identity checks (result.includes(contextLine)) so duplicates are pruned incorrectly, causing missing context in split view; also lacks key handling for large files (no virtualization) but primary blocker is incorrect filtering.
+Analytics components: AnalyticsDashboard and EnterpriseAnalytics still rely entirely on mocked arrays. Without real data fetching hooks or props, they misrepresent live analytics—contradicting the production-ready goal. AdvancedAnalyticsDashboard dynamically imports Chart.js but never handles the case where useAuth() has no session; last update time references may break during SSR, and toggling real-time repeatedly leaks intervals because realTimeInterval.current isn’t cleared when dependency toggles quickly.
+Policy controls: EnterprisePolicies hardcodes rule/control lists instead of loading from /api/rules etc., so it cannot manage real policies. RuleManagement fetches real APIs but the /api/admin/layers response uses snake_case timestamps; destructuring into Date fields without conversion leaves them as strings, breaking toLocaleDateString() and causing runtime errors.
+Security: none observed.
+Next actions: 1) Align AutoPRDashboard with backend contract (use Bearer auth, robust error handling, token management) and confirm PR data loads; add pagination/rate-limit recovery. 2) Rework CLI dry run/output handling so dry-run never mutates, JSON output is pure, and --output manages files safely. 3) Replace mock data in analytics/policy components with real API integration; patch DiffViewer filtering and RuleManagement date parsing; address timer cleanup in AdvancedAnalyticsDashboard.

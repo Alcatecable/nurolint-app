@@ -96,24 +96,37 @@ export default function IntegrationsHub({ onNavigateToApiKeys }: IntegrationsHub
             </div>
           </div>
 
-          <div className="integration-category">
+          <div className="integration-category featured">
             <div className="category-header">
-              <h4>Webhooks</h4>
+              <h4>Deployment Webhooks</h4>
               <span className="category-status" data-status="available">
                 Available
               </span>
             </div>
             <p>
-              Receive real-time notifications when analyses complete or issues
-              are detected.
+              Automatically trigger analysis when deployments are created on Vercel, Netlify, and other platforms.
             </p>
             <div className="webhook-features">
               <div className="feature-item">
-                Analysis completion notifications
+                Vercel deployment integration
               </div>
-              <div className="feature-item">Error alerts</div>
-              <div className="feature-item">Custom payload formatting</div>
-              <div className="feature-item">Retry mechanisms</div>
+              <div className="feature-item">Git commit tracking</div>
+              <div className="feature-item">Production vs preview detection</div>
+              <div className="feature-item">Event deduplication</div>
+            </div>
+            <div className="supported-platforms" style={{ marginTop: '0.75rem' }}>
+              <span className="platform-badge">Vercel</span>
+              <span className="platform-badge">Netlify</span>
+              <span className="platform-badge">Railway</span>
+            </div>
+            <div className="api-actions" style={{ marginTop: '1rem' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => window.open("/api/integrations/vercel/webhook", "_blank")}
+                aria-label="View Vercel webhook setup instructions"
+              >
+                Vercel Setup
+              </button>
             </div>
           </div>
 

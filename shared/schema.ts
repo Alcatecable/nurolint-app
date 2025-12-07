@@ -430,3 +430,101 @@ export const rolePermissions = pgTable("role_permissions", {
   permissionIdx: index("idx_role_permissions_permission").on(table.permissionId),
   uniqueRolePermission: unique("unique_role_permission").on(table.role, table.permissionId),
 }));
+
+export const ruleDefinitions = pgTable("rule_definitions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ruleId: text("rule_id").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(),
+  layer: integer("layer").notNull(),
+  severity: text("severity").default("warning"),
+  autoFixable: boolean("auto_fixable").default(false),
+  documentationUrl: text("documentation_url"),
+  examples: jsonb("examples").default({}),
+  isPremium: boolean("is_premium").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  categoryIdx: index("idx_rule_definitions_category").on(table.category),
+  layerIdx: index("idx_rule_definitions_layer").on(table.layer),
+  severityIdx: index("idx_rule_definitions_severity").on(table.severity),
+  ruleIdIdx: index("idx_rule_definitions_rule_id").on(table.ruleId),
+}));
+
+export const teamRuleConfigs = pgTable("team_rule_configs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamId: uuid("team_id").notNull(),
+  ruleId: uuid("rule_id").notNull(),
+  enabled: boolean("enabled").default(true),
+  severityOverride: text("severity_override"),
+  autoFixEnabled: boolean("auto_fix_enabled").default(true),
+  customConfig: jsonb("custom_config").default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  teamIdIdx: index("idx_team_rule_configs_team").on(table.teamId),
+  ruleIdIdx: index("idx_team_rule_configs_rule").on(table.ruleId),
+  uniqueTeamRule: unique("unique_team_rule").on(table.teamId, table.ruleId),
+}));
+
+export const projectRuleConfigs = pgTable("project_rule_configs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").notNull(),
+  ruleId: uuid("rule_id").notNull(),
+  enabled: boolean("enabled").default(true),
+  severityOverride: text("severity_override"),
+  autoFixEnabled: boolean("auto_fix_enabled").default(true),
+  customConfig: jsonb("custom_config").default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  projectIdIdx: index("idx_project_rule_configs_project").on(table.projectId),
+  ruleIdIdx: index("idx_project_rule_configs_rule").on(table.ruleId),
+  uniqueProjectRule: unique("unique_project_rule").on(table.projectId, table.ruleId),
+}));
+
+export const usageMetrics = pgTable("usage_metrics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamId: uuid("team_id"),
+  userId: uuid("user_id"),
+  metricDate: timestamp("metric_date", { mode: "date" }).notNull(),
+  metricType: text("metric_type").notNull(),
+  analysesCount: integer("analyses_count").default(0),
+  filesAnalyzed: integer("files_analyzed").default(0),
+  issuesFound: integer("issues_found").default(0),
+  issuesFixed: integer("issues_fixed").default(0),
+  avgAnalysisTimeMs: integer("avg_analysis_time_ms").default(0),
+  totalExecutionTimeMs: integer("total_execution_time_ms").default(0),
+  apiCalls: integer("api_calls").default(0),
+  apiErrors: integer("api_errors").default(0),
+  creditsUsed: integer("credits_used").default(0),
+  costUsd: decimal("cost_usd", { precision: 10, scale: 4 }).default("0.0000"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  teamIdIdx: index("idx_usage_metrics_team").on(table.teamId),
+  userIdIdx: index("idx_usage_metrics_user").on(table.userId),
+  metricDateIdx: index("idx_usage_metrics_date").on(table.metricDate),
+  metricTypeIdx: index("idx_usage_metrics_type").on(table.metricType),
+}));
+
+export const apiKeyUsage = pgTable("api_key_usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  apiKeyId: uuid("api_key_id").notNull(),
+  endpoint: text("endpoint").notNull(),
+  method: text("method").notNull(),
+  statusCode: integer("status_code"),
+  responseTimeMs: integer("response_time_ms"),
+  requestBodySize: integer("request_body_size"),
+  responseBodySize: integer("response_body_size"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  apiKeyIdIdx: index("idx_api_key_usage_key").on(table.apiKeyId),
+  endpointIdx: index("idx_api_key_usage_endpoint").on(table.endpoint),
+  createdAtIdx: index("idx_api_key_usage_created").on(table.createdAt),
+  statusCodeIdx: index("idx_api_key_usage_status").on(table.statusCode),
+}));

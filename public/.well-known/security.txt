@@ -1,0 +1,12 @@
+Contact: mailto:security@neurolint.dev
+Expires: 2025-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://neurolint.dev/.well-known/security.txt
+Policy: https://neurolint.dev/security
+
+# NeuroLint Security Policy
+# 
+# If you discover a security vulnerability, please report it responsibly.
+# We aim to respond within 24 hours and will work with you to address issues promptly.
+# 
+# Thank you for helping keep NeuroLint secure.

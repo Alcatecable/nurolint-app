@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import AutoPRDashboard from "./AutoPRDashboard";
 import GitHubActionsGenerator from "./GitHubActionsGenerator";
 import GitLabCIGenerator from "./GitLabCIGenerator";
+import MonorepoAnalyzer from "./MonorepoAnalyzer";
 
 interface IntegrationsHubProps {
   onNavigateToApiKeys: () => void;
@@ -13,6 +14,11 @@ export default function IntegrationsHub({ onNavigateToApiKeys }: IntegrationsHub
   const [showAutoPRDashboard, setShowAutoPRDashboard] = useState(false);
   const [showActionsGenerator, setShowActionsGenerator] = useState(false);
   const [showGitLabCIGenerator, setShowGitLabCIGenerator] = useState(false);
+  const [showMonorepoAnalyzer, setShowMonorepoAnalyzer] = useState(false);
+
+  if (showMonorepoAnalyzer) {
+    return <MonorepoAnalyzer onBack={() => setShowMonorepoAnalyzer(false)} />;
+  }
 
   if (showGitLabCIGenerator) {
     return <GitLabCIGenerator onBack={() => setShowGitLabCIGenerator(false)} />;
@@ -178,6 +184,39 @@ export default function IntegrationsHub({ onNavigateToApiKeys }: IntegrationsHub
                 aria-label="Open Auto PR Dashboard"
               >
                 Manage Auto PRs
+              </button>
+            </div>
+          </div>
+
+          <div className="integration-category featured">
+            <div className="category-header">
+              <h4>Monorepo Support</h4>
+              <span className="category-status" data-status="available">
+                Available
+              </span>
+            </div>
+            <p>
+              Workspace-aware analysis for Nx, Turborepo, Lerna, and other monorepo setups.
+            </p>
+            <div className="monorepo-features">
+              <div className="feature-item">Nx workspace detection</div>
+              <div className="feature-item">Turborepo pipeline support</div>
+              <div className="feature-item">Selective workspace analysis</div>
+              <div className="feature-item">Dependency-aware scanning</div>
+            </div>
+            <div className="supported-platforms" style={{ marginTop: '0.75rem' }}>
+              <span className="platform-badge">Nx</span>
+              <span className="platform-badge">Turborepo</span>
+              <span className="platform-badge">Lerna</span>
+              <span className="platform-badge">PNPM</span>
+            </div>
+            <div className="api-actions" style={{ marginTop: '1rem' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowMonorepoAnalyzer(true)}
+                aria-label="Open Monorepo Analyzer"
+              >
+                Analyze Monorepo
               </button>
             </div>
           </div>

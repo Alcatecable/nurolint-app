@@ -18,9 +18,6 @@ const nextConfig = {
       },
     ];
   },
-  devIndicators: {
-    buildActivityPosition: 'bottom-right',
-  },
   webpack: (config) => {
     return config;
   },

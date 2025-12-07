@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import AutoPRDashboard from "./AutoPRDashboard";
 import GitHubActionsGenerator from "./GitHubActionsGenerator";
+import GitLabCIGenerator from "./GitLabCIGenerator";
 
 interface IntegrationsHubProps {
   onNavigateToApiKeys: () => void;
@@ -11,6 +12,11 @@ interface IntegrationsHubProps {
 export default function IntegrationsHub({ onNavigateToApiKeys }: IntegrationsHubProps) {
   const [showAutoPRDashboard, setShowAutoPRDashboard] = useState(false);
   const [showActionsGenerator, setShowActionsGenerator] = useState(false);
+  const [showGitLabCIGenerator, setShowGitLabCIGenerator] = useState(false);
+
+  if (showGitLabCIGenerator) {
+    return <GitLabCIGenerator onBack={() => setShowGitLabCIGenerator(false)} />;
+  }
 
   if (showActionsGenerator) {
     return <GitHubActionsGenerator onBack={() => setShowActionsGenerator(false)} />;
@@ -72,13 +78,20 @@ export default function IntegrationsHub({ onNavigateToApiKeys }: IntegrationsHub
               <span className="platform-badge">Jenkins</span>
               <span className="platform-badge">Azure DevOps</span>
             </div>
-            <div className="api-actions" style={{ marginTop: '1rem' }}>
+            <div className="api-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 className="btn btn-primary"
                 onClick={() => setShowActionsGenerator(true)}
                 aria-label="Open GitHub Actions Workflow Generator"
               >
-                Generate Workflows
+                GitHub Actions
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowGitLabCIGenerator(true)}
+                aria-label="Open GitLab CI Pipeline Generator"
+              >
+                GitLab CI
               </button>
             </div>
           </div>

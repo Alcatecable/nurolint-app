@@ -11,7 +11,7 @@ interface Rule {
   pattern: string;
   description: string;
   version: string;
-  lastModified: Date;
+  lastModified: string | Date;
   usage: number;
 }
 
@@ -278,7 +278,7 @@ export default function RuleManagement() {
                   <div className="meta-item">
                     <span className="meta-label">Modified:</span>
                     <span className="meta-value">
-                      {rule.lastModified.toLocaleDateString()}
+                      {new Date(rule.lastModified).toLocaleDateString()}
                     </span>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 interface AutoPR {
   id: string;
@@ -24,76 +24,29 @@ interface AutoPRStats {
   successRate: number;
 }
 
+interface Repository {
+  name: string;
+  prsCreated: number;
+}
+
 export default function AutoPRDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "settings">("overview");
   const [selectedRepository, setSelectedRepository] = useState<string>("all");
+  const [error, setError] = useState<string | null>(null);
+  const [githubToken, setGithubToken] = useState<string>("");
+  const [isConnected, setIsConnected] = useState(false);
+  const [showTokenInput, setShowTokenInput] = useState(false);
 
-  const [pullRequests] = useState<AutoPR[]>([
-    {
-      id: "1",
-      repositoryName: "acme/web-app",
-      prNumber: 142,
-      status: 'merged',
-      title: "fix: NeuroLint auto-fix for console, accessibility issues",
-      branchName: "neurolint/auto-fix-1701234567890",
-      filesChanged: 4,
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 43200000).toISOString(),
-      mergedAt: new Date(Date.now() - 43200000).toISOString(),
-      htmlUrl: "https://github.com/acme/web-app/pull/142"
-    },
-    {
-      id: "2",
-      repositoryName: "acme/web-app",
-      prNumber: 145,
-      status: 'open',
-      title: "fix: NeuroLint auto-fix for TypeScript strict mode violations",
-      branchName: "neurolint/auto-fix-1701334567890",
-      filesChanged: 7,
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      updatedAt: new Date(Date.now() - 1800000).toISOString(),
-      htmlUrl: "https://github.com/acme/web-app/pull/145"
-    },
-    {
-      id: "3",
-      repositoryName: "acme/api-server",
-      prNumber: 89,
-      status: 'open',
-      title: "fix: NeuroLint auto-fix for security header validation",
-      branchName: "neurolint/auto-fix-1701434567890",
-      filesChanged: 2,
-      createdAt: new Date(Date.now() - 7200000).toISOString(),
-      updatedAt: new Date(Date.now() - 3600000).toISOString(),
-      htmlUrl: "https://github.com/acme/api-server/pull/89"
-    },
-    {
-      id: "4",
-      repositoryName: "acme/mobile-app",
-      prNumber: 56,
-      status: 'closed',
-      title: "fix: NeuroLint auto-fix for React 18 patterns",
-      branchName: "neurolint/auto-fix-1701134567890",
-      filesChanged: 3,
-      createdAt: new Date(Date.now() - 172800000).toISOString(),
-      updatedAt: new Date(Date.now() - 86400000).toISOString(),
-      htmlUrl: "https://github.com/acme/mobile-app/pull/56"
-    }
-  ]);
-
-  const [stats] = useState<AutoPRStats>({
-    totalCreated: 47,
-    merged: 38,
-    open: 4,
-    closed: 5,
-    successRate: 88.4
+  const [pullRequests, setPullRequests] = useState<AutoPR[]>([]);
+  const [stats, setStats] = useState<AutoPRStats>({
+    totalCreated: 0,
+    merged: 0,
+    open: 0,
+    closed: 0,
+    successRate: 0
   });
-
-  const [repositories] = useState([
-    { name: "acme/web-app", prsCreated: 28 },
-    { name: "acme/api-server", prsCreated: 12 },
-    { name: "acme/mobile-app", prsCreated: 7 }
-  ]);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
 
   const [settings, setSettings] = useState({
     autoCreatePR: true,
@@ -105,10 +58,88 @@ export default function AutoPRDashboard() {
     defaultLabels: ["neurolint-auto-pr", "automated"]
   });
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+  const fetchAutoPRs = useCallback(async (token: string) => {
+    if (!token) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/integrations/github/auto-pr?limit=50', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('neurolint_github_token');
+          setIsConnected(false);
+          throw new Error('Invalid or expired GitHub token. Please reconnect.');
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch pull requests (${response.status})`);
+      }
+
+      const data = await response.json();
+      const prs: AutoPR[] = data.pullRequests || [];
+      setPullRequests(prs);
+
+      const merged = prs.filter(pr => pr.status === 'merged').length;
+      const open = prs.filter(pr => pr.status === 'open').length;
+      const closed = prs.filter(pr => pr.status === 'closed').length;
+      const total = prs.length;
+      
+      setStats({
+        totalCreated: total,
+        merged,
+        open,
+        closed,
+        successRate: total > 0 ? Math.round((merged / total) * 100 * 10) / 10 : 0
+      });
+
+      const repoMap = new Map<string, number>();
+      prs.forEach(pr => {
+        const count = repoMap.get(pr.repositoryName) || 0;
+        repoMap.set(pr.repositoryName, count + 1);
+      });
+      setRepositories(Array.from(repoMap.entries()).map(([name, prsCreated]) => ({ name, prsCreated })));
+
+      setIsConnected(true);
+      localStorage.setItem('neurolint_github_token', token);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setIsConnected(false);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  const handleConnect = () => {
+    if (githubToken.trim()) {
+      fetchAutoPRs(githubToken.trim());
+      setShowTokenInput(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    localStorage.removeItem('neurolint_github_token');
+    setGithubToken('');
+    setIsConnected(false);
+    setPullRequests([]);
+    setStats({ totalCreated: 0, merged: 0, open: 0, closed: 0, successRate: 0 });
+    setRepositories([]);
+  };
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('neurolint_github_token');
+    if (storedToken) {
+      setGithubToken(storedToken);
+      fetchAutoPRs(storedToken);
+    } else {
+      setIsLoading(false);
+    }
+  }, [fetchAutoPRs]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -183,6 +214,288 @@ export default function AutoPRDashboard() {
     );
   }
 
+  if (!isConnected && !showTokenInput) {
+    return (
+      <div className="auto-pr-dashboard">
+        <div className="dashboard-header">
+          <div className="header-content">
+            <h3>Auto PR Management</h3>
+            <p>Manage automated pull requests created by NeuroLint</p>
+          </div>
+        </div>
+        
+        <div className="connect-github-card">
+          <div className="connect-icon">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </div>
+          <h4>Connect GitHub</h4>
+          <p>Connect your GitHub account to view and manage automated pull requests created by NeuroLint.</p>
+          <button className="btn btn-primary" onClick={() => setShowTokenInput(true)}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            Connect GitHub Account
+          </button>
+          <p className="token-hint">You will need a GitHub Personal Access Token with repo scope.</p>
+        </div>
+
+        <style jsx>{`
+          .auto-pr-dashboard {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+          }
+          .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1rem;
+          }
+          .header-content h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 0.25rem 0;
+          }
+          .header-content p {
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+            font-size: 0.875rem;
+          }
+          .connect-github-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 3rem 2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid #000000;
+            border-radius: 16px;
+          }
+          .connect-icon {
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 1rem;
+          }
+          .connect-github-card h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0 0 0.5rem 0;
+          }
+          .connect-github-card > p {
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0 0 1.5rem 0;
+            max-width: 400px;
+          }
+          .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #000000;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          }
+          .btn-primary {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(255, 255, 255, 0.08) 100%);
+            color: #ffffff;
+          }
+          .btn-primary:hover {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.3) 0%, rgba(255, 255, 255, 0.12) 100%);
+          }
+          .token-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 1rem;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (showTokenInput) {
+    return (
+      <div className="auto-pr-dashboard">
+        <div className="dashboard-header">
+          <div className="header-content">
+            <h3>Auto PR Management</h3>
+            <p>Manage automated pull requests created by NeuroLint</p>
+          </div>
+        </div>
+        
+        <div className="token-input-card">
+          <button className="back-btn" onClick={() => setShowTokenInput(false)}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
+          <h4>Enter GitHub Token</h4>
+          <p>Create a Personal Access Token at GitHub Settings → Developer settings → Personal access tokens.</p>
+          <p className="scope-info">Required scopes: <code>repo</code>, <code>read:user</code></p>
+          
+          {error && (
+            <div className="error-message">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+              </svg>
+              {error}
+            </div>
+          )}
+          
+          <div className="token-form">
+            <input
+              type="password"
+              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              value={githubToken}
+              onChange={(e) => setGithubToken(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
+            />
+            <button className="btn btn-primary" onClick={handleConnect} disabled={!githubToken.trim()}>
+              Connect
+            </button>
+          </div>
+        </div>
+
+        <style jsx>{`
+          .auto-pr-dashboard {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+          }
+          .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1rem;
+          }
+          .header-content h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 0.25rem 0;
+          }
+          .header-content p {
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+            font-size: 0.875rem;
+          }
+          .token-input-card {
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid #000000;
+            border-radius: 16px;
+          }
+          .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.875rem;
+            cursor: pointer;
+            padding: 0;
+            margin-bottom: 1.5rem;
+          }
+          .back-btn:hover {
+            color: #ffffff;
+          }
+          .token-input-card h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0 0 0.5rem 0;
+          }
+          .token-input-card > p {
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0 0 0.5rem 0;
+            font-size: 0.875rem;
+          }
+          .scope-info {
+            margin-bottom: 1.5rem !important;
+          }
+          .scope-info code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+          }
+          .error-message {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(229, 62, 62, 0.15);
+            border: 1px solid rgba(229, 62, 62, 0.3);
+            border-radius: 8px;
+            color: #e53e3e;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+          }
+          .token-form {
+            display: flex;
+            gap: 0.75rem;
+          }
+          .token-form input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #000000;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 0.875rem;
+            font-family: monospace;
+          }
+          .token-form input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+          }
+          .token-form input:focus {
+            outline: none;
+            border-color: rgba(33, 150, 243, 0.5);
+          }
+          .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #000000;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          }
+          .btn-primary {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(255, 255, 255, 0.08) 100%);
+            color: #ffffff;
+          }
+          .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.3) 0%, rgba(255, 255, 255, 0.12) 100%);
+          }
+          .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div className="auto-pr-dashboard">
       <div className="dashboard-header">
@@ -190,13 +503,17 @@ export default function AutoPRDashboard() {
           <h3>Auto PR Management</h3>
           <p>Manage automated pull requests created by NeuroLint</p>
         </div>
-        <button className="btn btn-primary">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Create PR
-        </button>
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={handleDisconnect}>
+            Disconnect
+          </button>
+          <button className="btn btn-primary" onClick={() => fetchAutoPRs(githubToken)}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="stats-grid">
@@ -246,44 +563,54 @@ export default function AutoPRDashboard() {
           </div>
 
           <div className="pr-list">
-            {filteredPRs.map((pr) => (
-              <div key={pr.id} className="pr-card">
-                <div className="pr-header">
-                  <div className="pr-info">
-                    <a 
-                      href={pr.htmlUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="pr-title"
-                    >
-                      #{pr.prNumber} {pr.title}
-                    </a>
-                    <div className="pr-meta">
-                      <span className="repo-name">{pr.repositoryName}</span>
-                      <span className="separator">•</span>
-                      <span className="files-changed">{pr.filesChanged} files</span>
-                      <span className="separator">•</span>
-                      <span className="branch-name">{pr.branchName}</span>
-                    </div>
-                  </div>
-                  <span 
-                    className="status-badge"
-                    style={{ 
-                      background: getStatusBg(pr.status),
-                      color: getStatusColor(pr.status)
-                    }}
-                  >
-                    {pr.status}
-                  </span>
-                </div>
-                <div className="pr-footer">
-                  <span className="timestamp">Created {formatRelativeTime(pr.createdAt)}</span>
-                  {pr.mergedAt && (
-                    <span className="merged-info">Merged {formatRelativeTime(pr.mergedAt)}</span>
-                  )}
-                </div>
+            {filteredPRs.length === 0 ? (
+              <div className="empty-state">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M9 12h6M9 16h6M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <h4>No Auto PRs Found</h4>
+                <p>NeuroLint hasn&apos;t created any pull requests yet. Run NeuroLint on your repositories to get started.</p>
               </div>
-            ))}
+            ) : (
+              filteredPRs.map((pr) => (
+                <div key={pr.id} className="pr-card">
+                  <div className="pr-header">
+                    <div className="pr-info">
+                      <a 
+                        href={pr.htmlUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="pr-title"
+                      >
+                        #{pr.prNumber} {pr.title}
+                      </a>
+                      <div className="pr-meta">
+                        <span className="repo-name">{pr.repositoryName}</span>
+                        <span className="separator">•</span>
+                        <span className="files-changed">{pr.filesChanged} files</span>
+                        <span className="separator">•</span>
+                        <span className="branch-name">{pr.branchName}</span>
+                      </div>
+                    </div>
+                    <span 
+                      className="status-badge"
+                      style={{ 
+                        background: getStatusBg(pr.status),
+                        color: getStatusColor(pr.status)
+                      }}
+                    >
+                      {pr.status}
+                    </span>
+                  </div>
+                  <div className="pr-footer">
+                    <span className="timestamp">Created {formatRelativeTime(pr.createdAt)}</span>
+                    {pr.mergedAt && (
+                      <span className="merged-info">Merged {formatRelativeTime(pr.mergedAt)}</span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -478,6 +805,48 @@ export default function AutoPRDashboard() {
 
         .btn-primary:hover {
           background: linear-gradient(135deg, rgba(33, 150, 243, 0.3) 0%, rgba(255, 255, 255, 0.12) 100%);
+        }
+
+        .btn-secondary {
+          background: rgba(255, 255, 255, 0.05);
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .btn-secondary:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+        }
+
+        .header-actions {
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 3rem 2rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid #000000;
+          border-radius: 12px;
+        }
+
+        .empty-state svg {
+          color: rgba(255, 255, 255, 0.3);
+          margin-bottom: 1rem;
+        }
+
+        .empty-state h4 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #ffffff;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .empty-state p {
+          color: rgba(255, 255, 255, 0.5);
+          margin: 0;
+          font-size: 0.875rem;
         }
 
         .stats-grid {

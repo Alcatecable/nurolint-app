@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env['SUPABASE_URL']!,
+      process.env['SUPABASE_SERVICE_ROLE_KEY']!
     );
 
     // Record usage event
@@ -74,8 +74,8 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env['SUPABASE_URL']!,
+      process.env['SUPABASE_SERVICE_ROLE_KEY']!
     );
 
     // Get user's current usage and limits

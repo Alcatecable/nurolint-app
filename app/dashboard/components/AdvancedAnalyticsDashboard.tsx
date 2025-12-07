@@ -115,21 +115,23 @@ export default function AdvancedAnalyticsDashboard({
 
   // Real-time updates
   useEffect(() => {
+    if (realTimeInterval.current) {
+      clearInterval(realTimeInterval.current);
+      realTimeInterval.current = null;
+    }
+    
     if (realTimeEnabled) {
       realTimeInterval.current = setInterval(() => {
         fetchAnalytics();
       }, 30000); // Update every 30 seconds
+    }
 
-      return () => {
-        if (realTimeInterval.current) {
-          clearInterval(realTimeInterval.current);
-        }
-      };
-    } else {
+    return () => {
       if (realTimeInterval.current) {
         clearInterval(realTimeInterval.current);
+        realTimeInterval.current = null;
       }
-    }
+    };
   }, [realTimeEnabled]);
 
   // Fetch analytics data

@@ -1,0 +1,29 @@
+Add analytics section to dashboard
+Add policy controls to admin panel
+Create backend for automatic PRs
+Generate GitHub Actions templates
+Create GitLab CI integration templates
+Build Vercel webhook handler
+Add auto PR feature to hub
+Support monorepo analysis
+Add enterprise CLI options
+Create VS Code extension package
+Build Cursor VS Code extension
+Develop JetBrains plugin scaffold
+Add diff viewer component
+Automate security patch process
+
+Task
+
+Review the wave2-4 implementation: Nx/Turborepo Monorepo support in analysis. Check that:
+
+The monorepo detection API properly handles Nx (nx.json), Turborepo (turbo.json), Lerna, PNPM, and Yarn workspaces
+The workspace parsing logic correctly extracts workspace information
+The analysis endpoint integrates with the AnalysisJobQueueClient properly
+The MonorepoAnalyzer dashboard component follows existing patterns and uses the design system
+The IntegrationsHub properly integrates the new MonorepoAnalyzer component
+TypeScript types are correct and there are no potential runtime issues
+Thought for 20 seconds
+Result
+Fail – the wave2-4 monorepo support does not yet meet requirements because workspace detection misses key configurations and can throw at runtime. Critical findings: (1) PNPM and Lerna detection never surface workspaces—the code ignores pnpm-workspace.yaml contents and lerna.json “packages”, so detected configs return zero workspaces, breaking selective analysis for those setups. (2) parseTurborepoWorkspaces assumes package.json.workspaces is a string array; when the common object form { packages: [...] } is provided (supported by Yarn, PNPM, Turborepo), calling .map on that object will throw, preventing both detection and analysis. (3) Because these parsers feed the analysis loop, affected repos produce no jobs, so the AnalysisJobQueueClient integration is effectively bypassed. Security: none observed. Next actions: (1) Extend parsers to read pnpm-workspace.yaml (YAML parse) and lerna.json packages arrays so workspaces populate for those monorepo types. (2) Harden workspace glob handling to support both array and object forms (packages/nohoist) before mapping, preventing runtime crashes. (3) Add targeted tests for each monorepo type (Nx, Turborepo, Lerna, PNPM, Yarn) covering detect/analyze flows to verify jobs are created.
+

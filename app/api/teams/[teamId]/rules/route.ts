@@ -2,8 +2,73 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { hasPermission, checkTeamAccess } from "@/lib/rbac";
 import { logAuditEvent, extractRequestInfo } from "@/lib/audit-logger";
+import { rateLimiter, getTierRateLimits } from "@/lib/rate-limiter";
+import { validateCustomConfig, validateBulkRuleUpdate } from "@/lib/rule-config-validator";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const VALID_SEVERITIES = ["error", "warning", "info"];
+
+function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) {
+    return realIp;
+  }
+  return "unknown";
+}
+
+async function checkRateLimit(
+  request: NextRequest,
+  supabase: any,
+  action: string
+): Promise<{ allowed: boolean; response?: NextResponse; tier: string }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  let tier = "free";
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", user.id)
+      .single();
+    tier = profile?.plan || "free";
+  }
+
+  const clientIp = getClientIp(request);
+  const rateLimitConfig = getTierRateLimits(tier);
+  const rateLimitResult = user
+    ? rateLimiter.checkUserRateLimit(user.id, action, tier, rateLimitConfig)
+    : rateLimiter.checkIpRateLimit(clientIp, action, rateLimitConfig);
+
+  if (!rateLimitResult.allowed) {
+    return {
+      allowed: false,
+      tier,
+      response: NextResponse.json(
+        { 
+          error: "Rate limit exceeded",
+          retryAfter: rateLimitResult.retryAfter,
+          limit: rateLimitResult.limit,
+          window: rateLimitResult.window
+        },
+        { 
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimitResult.retryAfter || 60),
+            "X-RateLimit-Limit": String(rateLimitResult.limit),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": String(rateLimitResult.resetTime),
+          }
+        }
+      ),
+    };
+  }
+
+  return { allowed: true, tier };
+}
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +86,11 @@ export async function GET(
 
     if (!uuidRegex.test(teamId)) {
       return NextResponse.json({ error: "Invalid team ID format" }, { status: 400 });
+    }
+
+    const rateLimitCheck = await checkRateLimit(request, supabase, "team.rules.list");
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.response;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -111,6 +181,11 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid team ID format" }, { status: 400 });
     }
 
+    const rateLimitCheck = await checkRateLimit(request, supabase, "team.rules.update");
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.response;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -151,6 +226,39 @@ export async function PUT(
         { error: "Invalid ruleId format - must be a valid UUID" },
         { status: 400 }
       );
+    }
+
+    if (severityOverride !== undefined && severityOverride !== null) {
+      if (!VALID_SEVERITIES.includes(severityOverride)) {
+        return NextResponse.json(
+          { error: `Invalid severityOverride - must be one of: ${VALID_SEVERITIES.join(", ")}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (enabled !== undefined && typeof enabled !== "boolean") {
+      return NextResponse.json(
+        { error: "enabled must be a boolean" },
+        { status: 400 }
+      );
+    }
+
+    if (autoFixEnabled !== undefined && typeof autoFixEnabled !== "boolean") {
+      return NextResponse.json(
+        { error: "autoFixEnabled must be a boolean" },
+        { status: 400 }
+      );
+    }
+
+    if (customConfig !== undefined) {
+      const configValidation = validateCustomConfig(customConfig);
+      if (!configValidation.valid) {
+        return NextResponse.json(
+          { error: "Invalid customConfig", details: configValidation.errors },
+          { status: 400 }
+        );
+      }
     }
 
     const { data: ruleExists, error: ruleCheckError } = await supabase
@@ -245,6 +353,158 @@ export async function PUT(
   }
 }
 
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { teamId: string } }
+) {
+  try {
+    const { teamId } = params;
+    const supabase = getSupabaseServerClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (!uuidRegex.test(teamId)) {
+      return NextResponse.json({ error: "Invalid team ID format" }, { status: 400 });
+    }
+
+    const rateLimitCheck = await checkRateLimit(request, supabase, "team.rules.bulk");
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.response;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const hasUpdatePermission = await hasPermission(user.id, teamId, "team.update");
+    if (!hasUpdatePermission) {
+      const { ipAddress, userAgent } = extractRequestInfo(request);
+      await logAuditEvent({
+        teamId,
+        userId: user.id,
+        actorIpAddress: ipAddress,
+        actorUserAgent: userAgent,
+        action: "security.permission_denied",
+        resourceType: "team",
+        resourceId: teamId,
+        status: "failure",
+        errorMessage: "Insufficient permissions to bulk update team rules",
+      });
+      return NextResponse.json(
+        { error: "Insufficient permissions" },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { rules } = body;
+
+    const validation = validateBulkRuleUpdate(rules);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { 
+          error: "Validation failed",
+          details: validation.errors,
+          invalidIndices: validation.invalidIndices
+        },
+        { status: 400 }
+      );
+    }
+
+    const ruleIds = validation.validItems.map(item => item.ruleId);
+    const { data: existingRules, error: rulesCheckError } = await supabase
+      .from("rule_definitions")
+      .select("id")
+      .in("id", ruleIds);
+
+    if (rulesCheckError) {
+      return NextResponse.json(
+        { error: "Failed to verify rules" },
+        { status: 500 }
+      );
+    }
+
+    const existingRuleIds = new Set((existingRules || []).map((r: any) => r.id));
+    const missingRules = ruleIds.filter(id => !existingRuleIds.has(id));
+    if (missingRules.length > 0) {
+      return NextResponse.json(
+        { error: "Some rules not found", missingRuleIds: missingRules },
+        { status: 404 }
+      );
+    }
+
+    const upsertData = validation.validItems.map(item => ({
+      team_id: teamId,
+      rule_id: item.ruleId,
+      enabled: item.enabled !== undefined ? item.enabled : true,
+      severity_override: item.severityOverride || null,
+      auto_fix_enabled: item.autoFixEnabled !== undefined ? item.autoFixEnabled : true,
+      custom_config: item.customConfig || {},
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { data: upsertResult, error: upsertError } = await supabase
+      .from("team_rule_configs")
+      .upsert(upsertData, { 
+        onConflict: "team_id,rule_id",
+        ignoreDuplicates: false 
+      })
+      .select();
+
+    const results: { ruleId: string; success: boolean; error?: string }[] = [];
+    
+    if (upsertError) {
+      validation.validItems.forEach(item => {
+        results.push({ ruleId: item.ruleId, success: false, error: "Upsert failed" });
+      });
+    } else {
+      validation.validItems.forEach(item => {
+        results.push({ ruleId: item.ruleId, success: true });
+      });
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const errorCount = results.filter(r => !r.success).length;
+
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      teamId,
+      userId: user.id,
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: "team.updated",
+      resourceType: "team",
+      resourceId: teamId,
+      resourceName: `Bulk rule config update: ${validation.validItems.length} rules`,
+      status: errorCount === 0 ? "success" : "failure",
+      metadata: { 
+        totalRules: validation.validItems.length,
+        successCount,
+        errorCount
+      },
+    });
+
+    return NextResponse.json({
+      success: errorCount === 0,
+      totalProcessed: validation.validItems.length,
+      successCount,
+      errorCount,
+      results,
+    });
+  } catch (error) {
+    console.error("Bulk team rule update error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { teamId: string } }
@@ -261,6 +521,11 @@ export async function DELETE(
 
     if (!uuidRegex.test(teamId)) {
       return NextResponse.json({ error: "Invalid team ID format" }, { status: 400 });
+    }
+
+    const rateLimitCheck = await checkRateLimit(request, supabase, "team.rules.delete");
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.response;
     }
 
     const { data: { user } } = await supabase.auth.getUser();

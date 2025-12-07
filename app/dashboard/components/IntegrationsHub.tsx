@@ -1,12 +1,45 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import AutoPRDashboard from "./AutoPRDashboard";
 
 interface IntegrationsHubProps {
   onNavigateToApiKeys: () => void;
 }
 
 export default function IntegrationsHub({ onNavigateToApiKeys }: IntegrationsHubProps) {
+  const [showAutoPRDashboard, setShowAutoPRDashboard] = useState(false);
+
+  if (showAutoPRDashboard) {
+    return (
+      <div className="tab-content">
+        <button 
+          className="back-btn"
+          onClick={() => setShowAutoPRDashboard(false)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.5rem 1rem',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid #000000',
+            borderRadius: '8px',
+            color: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            marginBottom: '1rem'
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back to Integrations
+        </button>
+        <AutoPRDashboard />
+      </div>
+    );
+  }
+
   return (
     <div className="tab-content">
       <div className="integrations-overview">
@@ -77,6 +110,34 @@ export default function IntegrationsHub({ onNavigateToApiKeys }: IntegrationsHub
               <div className="channel-item">
                 <span>Microsoft Teams</span>
               </div>
+            </div>
+          </div>
+
+          <div className="integration-category featured">
+            <div className="category-header">
+              <h4>Auto PR Generation</h4>
+              <span className="category-status" data-status="available">
+                Available
+              </span>
+            </div>
+            <p>
+              Automatically create pull requests with code fixes from NeuroLint
+              analysis results.
+            </p>
+            <div className="auto-pr-features">
+              <div className="feature-item">Automated branch creation</div>
+              <div className="feature-item">Draft PR support</div>
+              <div className="feature-item">Batch PR creation</div>
+              <div className="feature-item">PR tracking & history</div>
+            </div>
+            <div className="api-actions">
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowAutoPRDashboard(true)}
+                aria-label="Open Auto PR Dashboard"
+              >
+                Manage Auto PRs
+              </button>
             </div>
           </div>
 

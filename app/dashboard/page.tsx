@@ -35,6 +35,7 @@ import MigrationConfigurator from "./components/MigrationConfigurator";
 import IntegrationsHub from "./components/IntegrationsHub";
 import ProjectsManager from "./components/ProjectsManager";
 import AnalysisResultsPanel from "./components/AnalysisResultsPanel";
+import EnterpriseAnalytics from "./components/EnterpriseAnalytics";
 
 // Import the same result interfaces from the demo
 interface DemoResult {
@@ -2092,6 +2093,10 @@ export default function Dashboard() {
                 }))
               }
             />
+          )}
+
+          {dashboardState.activeSection === "enterprise" && (
+            <EnterpriseAnalytics />
           )}
 
           {/* Code Analysis Tab */}

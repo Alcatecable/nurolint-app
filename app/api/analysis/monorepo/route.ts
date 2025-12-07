@@ -30,6 +30,43 @@ interface TurboConfig {
   globalDependencies?: string[];
 }
 
+function extractWorkspaceGlobs(workspacesField: unknown): string[] {
+  if (Array.isArray(workspacesField)) {
+    return workspacesField.filter(g => typeof g === 'string');
+  }
+  if (workspacesField && typeof workspacesField === 'object') {
+    const obj = workspacesField as Record<string, unknown>;
+    const packagesField = obj['packages'];
+    if (Array.isArray(packagesField)) {
+      return packagesField.filter(g => typeof g === 'string');
+    }
+  }
+  return [];
+}
+
+function parsePnpmWorkspaceYaml(content: string): string[] {
+  const packages: string[] = [];
+  const lines = content.split('\n');
+  let inPackages = false;
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === 'packages:') {
+      inPackages = true;
+      continue;
+    }
+    if (inPackages) {
+      if (trimmed.startsWith('- ')) {
+        const pkg = trimmed.slice(2).trim().replace(/['"`]/g, '');
+        if (pkg) packages.push(pkg);
+      } else if (trimmed && !trimmed.startsWith('-') && !trimmed.startsWith('#')) {
+        break;
+      }
+    }
+  }
+  return packages;
+}
+
 function detectMonorepoType(files: Record<string, string>): MonorepoConfig['type'] {
   if (files['nx.json']) return 'nx';
   if (files['turbo.json']) return 'turborepo';
@@ -94,95 +131,110 @@ function parseNxWorkspaces(files: Record<string, string>): WorkspaceInfo[] {
   return workspaces;
 }
 
-function parseTurborepoWorkspaces(files: Record<string, string>): WorkspaceInfo[] {
+function parseWorkspacesFromGlobs(files: Record<string, string>, workspaceGlobs: string[]): WorkspaceInfo[] {
   const workspaces: WorkspaceInfo[] = [];
   
-  try {
-    const packageJson = JSON.parse(files['package.json'] || '{}');
-    const workspaceGlobs: string[] = packageJson.workspaces || [];
+  const basePaths = workspaceGlobs
+    .map(g => g.replace('/*', '').replace('/**', ''))
+    .filter(p => !p.includes('*'));
+  
+  for (const basePath of basePaths) {
+    const subdirs = Object.keys(files)
+      .filter(f => f.startsWith(`${basePath}/`) && f.endsWith('/package.json'))
+      .map(f => {
+        const parts = f.split('/');
+        return parts.slice(0, parts.length - 1).join('/');
+      });
     
-    const basePaths = workspaceGlobs
-      .map(g => g.replace('/*', '').replace('/**', ''))
-      .filter(p => !p.includes('*'));
-    
-    for (const basePath of basePaths) {
-      const subdirs = Object.keys(files)
-        .filter(f => f.startsWith(`${basePath}/`) && f.endsWith('/package.json'))
-        .map(f => {
-          const parts = f.split('/');
-          return parts.slice(0, parts.length - 1).join('/');
-        });
+    for (const subdir of subdirs) {
+      const pkgPath = `${subdir}/package.json`;
+      let name = subdir.split('/').pop() || subdir;
+      let deps: string[] = [];
       
-      for (const subdir of subdirs) {
-        const pkgPath = `${subdir}/package.json`;
-        let name = subdir.split('/').pop() || subdir;
-        let deps: string[] = [];
-        
-        if (files[pkgPath]) {
-          try {
-            const pkg = JSON.parse(files[pkgPath]);
-            name = pkg.name || name;
-            deps = Object.keys(pkg.dependencies || {}).filter(d => d.startsWith('@'));
-          } catch {}
-        }
-        
-        workspaces.push({
-          name,
-          path: subdir,
-          type: basePath.includes('app') ? 'app' : 'package',
-          dependencies: deps,
-          hasProjectConfig: !!files[pkgPath],
-        });
+      if (files[pkgPath]) {
+        try {
+          const pkg = JSON.parse(files[pkgPath]);
+          name = pkg.name || name;
+          deps = Object.keys(pkg.dependencies || {}).filter(d => d.startsWith('@'));
+        } catch {}
       }
+      
+      workspaces.push({
+        name,
+        path: subdir,
+        type: basePath.includes('app') ? 'app' : 'package',
+        dependencies: deps,
+        hasProjectConfig: !!files[pkgPath],
+      });
     }
-  } catch {}
+  }
   
   return workspaces;
 }
 
-function parseStandardWorkspaces(files: Record<string, string>): WorkspaceInfo[] {
-  const workspaces: WorkspaceInfo[] = [];
-  
+function parseTurborepoWorkspaces(files: Record<string, string>): WorkspaceInfo[] {
   try {
     const packageJson = JSON.parse(files['package.json'] || '{}');
-    const workspaceGlobs: string[] = packageJson.workspaces || [];
-    
-    if (workspaceGlobs.length > 0) {
-      return parseTurborepoWorkspaces(files);
-    }
-    
-    const commonPaths = ['packages', 'apps', 'libs', 'tools'];
-    for (const basePath of commonPaths) {
-      const subdirs = Object.keys(files)
-        .filter(f => f.startsWith(`${basePath}/`) && f.endsWith('/package.json'))
-        .map(f => {
-          const parts = f.split('/');
-          return parts.slice(0, parts.length - 1).join('/');
-        });
-      
-      for (const subdir of subdirs) {
-        const pkgPath = `${subdir}/package.json`;
-        let name = subdir.split('/').pop() || subdir;
-        
-        if (files[pkgPath]) {
-          try {
-            const pkg = JSON.parse(files[pkgPath]);
-            name = pkg.name || name;
-          } catch {}
-        }
-        
-        workspaces.push({
-          name,
-          path: subdir,
-          type: basePath === 'apps' ? 'app' : basePath === 'tools' ? 'tool' : 'package',
-          dependencies: [],
-          hasProjectConfig: !!files[pkgPath],
-        });
-      }
-    }
+    const workspaceGlobs = extractWorkspaceGlobs(packageJson.workspaces);
+    return parseWorkspacesFromGlobs(files, workspaceGlobs);
   } catch {}
   
-  return workspaces;
+  return [];
+}
+
+function parseLernaWorkspaces(files: Record<string, string>): WorkspaceInfo[] {
+  try {
+    const lernaJson = JSON.parse(files['lerna.json'] || '{}');
+    const packagesField = lernaJson.packages;
+    
+    if (Array.isArray(packagesField)) {
+      const workspaceGlobs = packagesField.filter(g => typeof g === 'string');
+      return parseWorkspacesFromGlobs(files, workspaceGlobs);
+    }
+    
+    const packageJson = JSON.parse(files['package.json'] || '{}');
+    const workspaceGlobs = extractWorkspaceGlobs(packageJson.workspaces);
+    if (workspaceGlobs.length > 0) {
+      return parseWorkspacesFromGlobs(files, workspaceGlobs);
+    }
+    
+    return parseWorkspacesFromGlobs(files, ['packages/*']);
+  } catch {}
+  
+  return [];
+}
+
+function parsePnpmWorkspaces(files: Record<string, string>): WorkspaceInfo[] {
+  try {
+    const pnpmYaml = files['pnpm-workspace.yaml'];
+    if (pnpmYaml) {
+      const workspaceGlobs = parsePnpmWorkspaceYaml(pnpmYaml);
+      if (workspaceGlobs.length > 0) {
+        return parseWorkspacesFromGlobs(files, workspaceGlobs);
+      }
+    }
+    
+    const packageJson = JSON.parse(files['package.json'] || '{}');
+    const workspaceGlobs = extractWorkspaceGlobs(packageJson.workspaces);
+    return parseWorkspacesFromGlobs(files, workspaceGlobs);
+  } catch {}
+  
+  return [];
+}
+
+function parseStandardWorkspaces(files: Record<string, string>): WorkspaceInfo[] {
+  try {
+    const packageJson = JSON.parse(files['package.json'] || '{}');
+    const workspaceGlobs = extractWorkspaceGlobs(packageJson.workspaces);
+    
+    if (workspaceGlobs.length > 0) {
+      return parseWorkspacesFromGlobs(files, workspaceGlobs);
+    }
+    
+    return parseWorkspacesFromGlobs(files, ['packages/*', 'apps/*', 'libs/*', 'tools/*']);
+  } catch {}
+  
+  return [];
 }
 
 export function detectMonorepo(files: Record<string, string>): MonorepoConfig {
@@ -207,14 +259,20 @@ export function detectMonorepo(files: Record<string, string>): MonorepoConfig {
       break;
     
     case 'lerna':
-      workspaces = parseStandardWorkspaces(files);
+      workspaces = parseLernaWorkspaces(files);
       try {
         rootConfig = JSON.parse(files['lerna.json'] || '{}');
       } catch {}
       break;
     
     case 'pnpm-workspace':
+      workspaces = parsePnpmWorkspaces(files);
+      break;
+    
     case 'yarn-workspace':
+      workspaces = parseTurborepoWorkspaces(files);
+      break;
+    
     case 'standard':
       workspaces = parseStandardWorkspaces(files);
       break;

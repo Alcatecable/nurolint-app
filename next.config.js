@@ -4,14 +4,6 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['*'],
     },
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js'
-        }
-      }
-    }
   },
   async headers() {
     return [
@@ -26,16 +18,9 @@ const nextConfig = {
       },
     ];
   },
-  allowedDevOrigins: [
-    '127.0.0.1',
-    '127.0.0.1:5000',
-    'localhost',
-    'localhost:5000',
-    '*.replit.dev',
-    '*.janeway.replit.dev',
-    '*.picard.replit.dev',
-    '*.repl.co',
-  ],
+  devIndicators: {
+    buildActivityPosition: 'bottom-right',
+  },
   webpack: (config) => {
     return config;
   },

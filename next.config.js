@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: ['*'],
+  allowedDevOrigins: ['*.replit.dev', '*.picard.replit.dev', '*.replit.app'],
   experimental: {
     serverActions: {
       allowedOrigins: ['*'],

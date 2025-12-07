@@ -4,6 +4,7 @@ export type AuditAction =
   | 'user.login' | 'user.logout' | 'user.password_changed' | 'user.mfa_enabled'
   | 'team.created' | 'team.updated' | 'team.deleted' 
   | 'team.member_invited' | 'team.member_added' | 'team.member_removed' | 'team.role_changed'
+  | 'team.invitation_cancelled' | 'team.invitation_declined' | 'team.invitation_expired'
   | 'project.created' | 'project.updated' | 'project.deleted' | 'project.analyzed' | 'project.fixed'
   | 'integration.connected' | 'integration.disconnected'
   | 'security.api_key_created' | 'security.api_key_revoked' | 'security.permission_denied';

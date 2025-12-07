@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { logAuditEvent, extractRequestInfo } from "../../../../../lib/audit-logger";
 
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const supabaseServiceKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
@@ -225,6 +226,21 @@ export async function POST(
     console.log(`Invitation sent to ${email} for team ${team.name}`);
     console.log(`Invitation link: /invite/${token}`);
 
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      teamId,
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'team.member_invited',
+      resourceType: 'invitation',
+      resourceId: invitation.id,
+      resourceName: email,
+      status: 'success',
+      metadata: { role, email },
+    });
+
     return NextResponse.json(
       {
         invitation: {
@@ -323,6 +339,19 @@ export async function DELETE(
       );
     }
 
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      teamId,
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'team.invitation_cancelled',
+      resourceType: 'invitation',
+      resourceId: inviteId,
+      status: 'success',
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Team invitations DELETE error:", error);
@@ -391,11 +420,27 @@ export async function PATCH(
         .update({ status: 'expired' })
         .eq('id', inviteId);
 
+      const { ipAddress: expiredIp, userAgent: expiredUa } = extractRequestInfo(request);
+      await logAuditEvent({
+        teamId,
+        userId,
+        actorType: 'user',
+        actorIpAddress: expiredIp,
+        actorUserAgent: expiredUa,
+        action: 'team.invitation_expired',
+        resourceType: 'invitation',
+        resourceId: inviteId,
+        status: 'failure',
+        errorMessage: 'Invitation has expired',
+      });
+
       return NextResponse.json(
         { error: "Invitation has expired" },
         { status: 400 },
       );
     }
+
+    const { ipAddress, userAgent } = extractRequestInfo(request);
 
     if (action === "accept") {
       const memberData = {
@@ -422,6 +467,19 @@ export async function PATCH(
         .update({ status: 'accepted' })
         .eq('id', inviteId);
 
+      await logAuditEvent({
+        teamId,
+        userId,
+        actorType: 'user',
+        actorIpAddress: ipAddress,
+        actorUserAgent: userAgent,
+        action: 'team.member_added',
+        resourceType: 'team',
+        resourceId: teamId,
+        status: 'success',
+        metadata: { role: invitation.role, invitationId: inviteId },
+      });
+
       return NextResponse.json({
         invitation: { ...invitation, status: 'accepted' },
         message: "Invitation accepted",
@@ -431,6 +489,18 @@ export async function PATCH(
         .from('team_invitations')
         .update({ status: 'declined' })
         .eq('id', inviteId);
+
+      await logAuditEvent({
+        teamId,
+        userId,
+        actorType: 'user',
+        actorIpAddress: ipAddress,
+        actorUserAgent: userAgent,
+        action: 'team.invitation_declined',
+        resourceType: 'invitation',
+        resourceId: inviteId,
+        status: 'success',
+      });
 
       return NextResponse.json({
         invitation: { ...invitation, status: 'declined' },

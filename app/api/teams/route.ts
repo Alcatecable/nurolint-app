@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logAuditEvent, extractRequestInfo } from "../../../lib/audit-logger";
 
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const supabaseServiceKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
@@ -232,6 +233,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      teamId: team.id,
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'team.created',
+      resourceType: 'team',
+      resourceId: team.id,
+      resourceName: team.name,
+      status: 'success',
+      metadata: { plan },
+    });
+
     return NextResponse.json(
       {
         team,
@@ -321,6 +337,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      teamId,
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'team.updated',
+      resourceType: 'team',
+      resourceId: teamId,
+      resourceName: updatedTeam.name,
+      status: 'success',
+      changes: safeUpdates,
+    });
+
     return NextResponse.json({ team: updatedTeam });
 
   } catch (error) {
@@ -399,6 +430,19 @@ export async function DELETE(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      teamId,
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'team.deleted',
+      resourceType: 'team',
+      resourceId: teamId,
+      status: 'success',
+    });
 
     return NextResponse.json({ success: true });
 

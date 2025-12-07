@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { authenticateRequest } from "../../../lib/auth-middleware";
+import { logAuditEvent, extractRequestInfo } from "../../../lib/audit-logger";
 
-const supabaseUrl = process.env['SUPABASE_URL'];
+const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const supabaseServiceKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
 let supabase: any = null;
@@ -151,6 +152,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'project.created',
+      resourceType: 'project',
+      resourceId: project.id,
+      resourceName: project.name,
+      status: 'success',
+      metadata: { framework },
+    });
+
     return NextResponse.json(
       {
         project,
@@ -205,6 +220,20 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'project.updated',
+      resourceType: 'project',
+      resourceId: projectId,
+      resourceName: project.name,
+      status: 'success',
+      changes: updates,
+    });
+
     return NextResponse.json({ project });
 
   } catch (error) {
@@ -249,6 +278,18 @@ export async function DELETE(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAuditEvent({
+      userId,
+      actorType: 'user',
+      actorIpAddress: ipAddress,
+      actorUserAgent: userAgent,
+      action: 'project.deleted',
+      resourceType: 'project',
+      resourceId: projectId,
+      status: 'success',
+    });
 
     return NextResponse.json({ success: true });
 

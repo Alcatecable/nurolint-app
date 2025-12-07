@@ -1,30 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { createClient } from "@supabase/supabase-js";
 
-// In-memory storage (same as teams route)
-const teams = new Map();
-const teamMembers = new Map();
-const invitations = new Map();
+const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
+const supabaseServiceKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
-interface TeamInvitation {
-  id: string;
-  teamId: string;
-  email: string;
-  role: "admin" | "member" | "viewer";
-  invitedBy: string;
-  createdAt: string;
-  expiresAt: string;
-  status: "pending" | "accepted" | "declined" | "expired";
-  token: string;
-}
+let supabase: any = null;
 
-interface TeamMember {
-  userId: string;
-  teamId: string;
-  role: "owner" | "admin" | "member" | "viewer";
-  joinedAt: string;
-  permissions: string[];
-  isActive: boolean;
+if (supabaseUrl && supabaseServiceKey) {
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+} else {
+  console.warn('Supabase configuration missing. Team Invitations API will not function properly.');
 }
 
 const generateInviteToken = (): string => {
@@ -57,42 +43,67 @@ export async function GET(
   { params }: { params: { teamId: string } },
 ) {
   try {
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database service unavailable - configuration missing' },
+        { status: 503 }
+      );
+    }
+
     const { teamId } = params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "demo-user";
+    const userId = searchParams.get("userId");
 
-    const team = teams.get(teamId);
-    if (!team) {
+    if (!userId) {
+      return NextResponse.json({ error: "User ID required" }, { status: 400 });
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(teamId) || !uuidRegex.test(userId)) {
+      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+    }
+
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('id', teamId)
+      .single();
+
+    if (teamError || !team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // Check if user has permission to view invitations
-    const members = teamMembers.get(teamId) || [];
-    const userMember = members.find(
-      (m: TeamMember) => m.userId === userId && m.isActive,
-    );
+    const { data: userMember, error: memberError } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single();
 
-    if (
-      !userMember ||
-      (userMember.role !== "owner" && userMember.role !== "admin")
-    ) {
+    if (memberError || !userMember || (userMember.role !== "owner" && userMember.role !== "admin")) {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 },
       );
     }
 
-    // Get all invitations for this team
-    const teamInvitations = Array.from(invitations.values())
-      .filter((invite: TeamInvitation) => invite.teamId === teamId)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+    const { data: teamInvitations, error: invitationsError } = await supabase
+      .from('team_invitations')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false });
+
+    if (invitationsError) {
+      console.error('Error fetching invitations:', invitationsError);
+      return NextResponse.json({
+        invitations: [],
+        total: 0
+      });
+    }
 
     return NextResponse.json({
-      invitations: teamInvitations,
-      total: teamInvitations.length,
+      invitations: teamInvitations || [],
+      total: teamInvitations?.length || 0,
     });
   } catch (error) {
     console.error("Team invitations GET error:", error);
@@ -108,38 +119,59 @@ export async function POST(
   { params }: { params: { teamId: string } },
 ) {
   try {
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database service unavailable - configuration missing' },
+        { status: 503 }
+      );
+    }
+
     const { teamId } = params;
     const body = await request.json();
-    const { email, role = "member", userId = "demo-user" } = body;
+    const { email, role = "member", userId } = body;
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
     if (!["admin", "member", "viewer"].includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    const team = teams.get(teamId);
-    if (!team) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(teamId) || !uuidRegex.test(userId)) {
+      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+    }
+
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('*, settings')
+      .eq('id', teamId)
+      .single();
+
+    if (teamError || !team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // Check if user has permission to invite members
-    const members = teamMembers.get(teamId) || [];
-    const userMember = members.find(
-      (m: TeamMember) => m.userId === userId && m.isActive,
-    );
+    const { data: userMember, error: memberError } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single();
 
-    if (!userMember) {
+    if (memberError || !userMember) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Check permissions based on team settings
     const canInvite =
       userMember.role === "owner" ||
       userMember.role === "admin" ||
-      (team.settings.allowMemberInvites && userMember.role === "member");
+      (team.settings?.allowMemberInvites && userMember.role === "member");
 
     if (!canInvite) {
       return NextResponse.json(
@@ -148,24 +180,13 @@ export async function POST(
       );
     }
 
-    // Check if email is already a member
-    const existingMember = members.find(
-      (m: TeamMember) => m.userId === email && m.isActive,
-    );
-    if (existingMember) {
-      return NextResponse.json(
-        { error: "User is already a team member" },
-        { status: 400 },
-      );
-    }
-
-    // Check if there's already a pending invitation for this email
-    const existingInvite = Array.from(invitations.values()).find(
-      (invite: TeamInvitation) =>
-        invite.teamId === teamId &&
-        invite.email === email &&
-        invite.status === "pending",
-    );
+    const { data: existingInvite } = await supabase
+      .from('team_invitations')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('email', email)
+      .eq('status', 'pending')
+      .single();
 
     if (existingInvite) {
       return NextResponse.json(
@@ -174,27 +195,33 @@ export async function POST(
       );
     }
 
-    const inviteId = `invite_${Date.now()}_${Math.random().toString(36).substring(2)}`;
     const token = generateInviteToken();
-    const expiresAt = new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000,
-    ).toISOString(); // 7 days
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const invitation: TeamInvitation = {
-      id: inviteId,
-      teamId,
+    const invitationData = {
+      team_id: teamId,
       email,
       role,
-      invitedBy: userId,
-      createdAt: new Date().toISOString(),
-      expiresAt,
+      invited_by: userId,
+      expires_at: expiresAt,
       status: "pending",
       token,
     };
 
-    invitations.set(inviteId, invitation);
+    const { data: invitation, error: insertError } = await supabase
+      .from('team_invitations')
+      .insert(invitationData)
+      .select()
+      .single();
 
-    // In a real app, you would send an email here
+    if (insertError) {
+      console.error('Error creating invitation:', insertError);
+      return NextResponse.json(
+        { error: "Failed to send invitation" },
+        { status: 500 },
+      );
+    }
+
     console.log(`Invitation sent to ${email} for team ${team.name}`);
     console.log(`Invitation link: /invite/${token}`);
 
@@ -202,7 +229,7 @@ export async function POST(
       {
         invitation: {
           ...invitation,
-          inviteLink: `/invite/${token}`, // Include invite link in response
+          inviteLink: `/invite/${token}`,
         },
         message: "Invitation sent successfully",
       },
@@ -222,48 +249,79 @@ export async function DELETE(
   { params }: { params: { teamId: string } },
 ) {
   try {
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database service unavailable - configuration missing' },
+        { status: 503 }
+      );
+    }
+
     const { teamId } = params;
     const { searchParams } = new URL(request.url);
     const inviteId = searchParams.get("inviteId");
-    const userId = searchParams.get("userId") || "demo-user";
+    const userId = searchParams.get("userId");
 
-    if (!inviteId) {
+    if (!inviteId || !userId) {
       return NextResponse.json(
-        { error: "Invitation ID is required" },
+        { error: "Invitation ID and user ID are required" },
         { status: 400 },
       );
     }
 
-    const team = teams.get(teamId);
-    if (!team) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(teamId) || !uuidRegex.test(userId) || !uuidRegex.test(inviteId)) {
+      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+    }
+
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('id', teamId)
+      .single();
+
+    if (teamError || !team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    const invitation = invitations.get(inviteId);
-    if (!invitation || invitation.teamId !== teamId) {
+    const { data: invitation, error: inviteError } = await supabase
+      .from('team_invitations')
+      .select('id, team_id')
+      .eq('id', inviteId)
+      .single();
+
+    if (inviteError || !invitation || invitation.team_id !== teamId) {
       return NextResponse.json(
         { error: "Invitation not found" },
         { status: 404 },
       );
     }
 
-    // Check permissions
-    const members = teamMembers.get(teamId) || [];
-    const userMember = members.find(
-      (m: TeamMember) => m.userId === userId && m.isActive,
-    );
+    const { data: userMember, error: memberError } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single();
 
-    if (
-      !userMember ||
-      (userMember.role !== "owner" && userMember.role !== "admin")
-    ) {
+    if (memberError || !userMember || (userMember.role !== "owner" && userMember.role !== "admin")) {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 },
       );
     }
 
-    invitations.delete(inviteId);
+    const { error: deleteError } = await supabase
+      .from('team_invitations')
+      .delete()
+      .eq('id', inviteId);
+
+    if (deleteError) {
+      console.error('Error deleting invitation:', deleteError);
+      return NextResponse.json(
+        { error: "Failed to cancel invitation" },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -275,19 +333,25 @@ export async function DELETE(
   }
 }
 
-// Accept invitation endpoint
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { teamId: string } },
 ) {
   try {
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database service unavailable - configuration missing' },
+        { status: 503 }
+      );
+    }
+
     const { teamId } = params;
     const body = await request.json();
-    const { inviteId, action, userId = "demo-user" } = body;
+    const { inviteId, action, userId } = body;
 
-    if (!inviteId || !action) {
+    if (!inviteId || !action || !userId) {
       return NextResponse.json(
-        { error: "Invitation ID and action are required" },
+        { error: "Invitation ID, action, and user ID are required" },
         { status: 400 },
       );
     }
@@ -296,8 +360,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    const invitation = invitations.get(inviteId);
-    if (!invitation || invitation.teamId !== teamId) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(teamId) || !uuidRegex.test(userId) || !uuidRegex.test(inviteId)) {
+      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+    }
+
+    const { data: invitation, error: inviteError } = await supabase
+      .from('team_invitations')
+      .select('*')
+      .eq('id', inviteId)
+      .single();
+
+    if (inviteError || !invitation || invitation.team_id !== teamId) {
       return NextResponse.json(
         { error: "Invitation not found" },
         { status: 404 },
@@ -311,10 +385,12 @@ export async function PATCH(
       );
     }
 
-    // Check if invitation has expired
-    if (new Date(invitation.expiresAt) < new Date()) {
-      invitation.status = "expired";
-      invitations.set(inviteId, invitation);
+    if (new Date(invitation.expires_at) < new Date()) {
+      await supabase
+        .from('team_invitations')
+        .update({ status: 'expired' })
+        .eq('id', inviteId);
+
       return NextResponse.json(
         { error: "Invitation has expired" },
         { status: 400 },
@@ -322,40 +398,45 @@ export async function PATCH(
     }
 
     if (action === "accept") {
-      // Add user to team
-      const members = teamMembers.get(teamId) || [];
-
-      const newMember: TeamMember = {
-        userId,
-        teamId,
-        role: invitation.role as any,
-        joinedAt: new Date().toISOString(),
+      const memberData = {
+        team_id: teamId,
+        user_id: userId,
+        role: invitation.role,
         permissions: getRolePermissions(invitation.role),
-        isActive: true,
       };
 
-      members.push(newMember);
-      teamMembers.set(teamId, members);
+      const { error: memberError } = await supabase
+        .from('team_members')
+        .insert(memberData);
 
-      // Update team stats
-      const team = teams.get(teamId);
-      if (team) {
-        team.stats.memberCount = members.filter((m: any) => m.isActive).length;
-        teams.set(teamId, team);
+      if (memberError) {
+        console.error('Error adding team member:', memberError);
+        return NextResponse.json(
+          { error: "Failed to join team" },
+          { status: 500 },
+        );
       }
 
-      invitation.status = "accepted";
+      await supabase
+        .from('team_invitations')
+        .update({ status: 'accepted' })
+        .eq('id', inviteId);
+
+      return NextResponse.json({
+        invitation: { ...invitation, status: 'accepted' },
+        message: "Invitation accepted",
+      });
     } else {
-      invitation.status = "declined";
+      await supabase
+        .from('team_invitations')
+        .update({ status: 'declined' })
+        .eq('id', inviteId);
+
+      return NextResponse.json({
+        invitation: { ...invitation, status: 'declined' },
+        message: "Invitation declined",
+      });
     }
-
-    invitations.set(inviteId, invitation);
-
-    return NextResponse.json({
-      invitation,
-      message:
-        action === "accept" ? "Invitation accepted" : "Invitation declined",
-    });
   } catch (error) {
     console.error("Team invitations PATCH error:", error);
     return NextResponse.json(

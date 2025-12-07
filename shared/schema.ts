@@ -386,3 +386,47 @@ export const analysisJobs = pgTable("analysis_jobs", {
   statusIdx: index("idx_analysis_jobs_status").on(table.status),
   expiresAtIdx: index("idx_analysis_jobs_expires_at").on(table.expiresAt),
 }));
+
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamId: uuid("team_id"),
+  userId: uuid("user_id"),
+  actorType: text("actor_type").default("user"),
+  actorIpAddress: text("actor_ip_address"),
+  actorUserAgent: text("actor_user_agent"),
+  action: text("action").notNull(),
+  resourceType: text("resource_type").notNull(),
+  resourceId: uuid("resource_id"),
+  resourceName: text("resource_name"),
+  status: text("status").default("success"),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata").default({}),
+  changes: jsonb("changes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  teamIdIdx: index("idx_audit_logs_team").on(table.teamId),
+  userIdIdx: index("idx_audit_logs_user").on(table.userId),
+  actionIdx: index("idx_audit_logs_action").on(table.action),
+  resourceIdx: index("idx_audit_logs_resource").on(table.resourceType, table.resourceId),
+  createdAtIdx: index("idx_audit_logs_created").on(table.createdAt),
+}));
+
+export const permissions = pgTable("permissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  category: text("category").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  categoryIdx: index("idx_permissions_category").on(table.category),
+}));
+
+export const rolePermissions = pgTable("role_permissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  role: text("role").notNull(),
+  permissionId: uuid("permission_id").notNull(),
+}, (table) => ({
+  roleIdx: index("idx_role_permissions_role").on(table.role),
+  permissionIdx: index("idx_role_permissions_permission").on(table.permissionId),
+  uniqueRolePermission: unique("unique_role_permission").on(table.role, table.permissionId),
+}));

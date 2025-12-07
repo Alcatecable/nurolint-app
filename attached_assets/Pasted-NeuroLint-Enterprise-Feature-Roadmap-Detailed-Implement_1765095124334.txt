@@ -1,0 +1,2580 @@
+NeuroLint Enterprise Feature Roadmap
+Detailed Implementation Plan - Production-Ready & Robust
+Timeline: 8-10 weeks
+Goal: $250k-$1.2M acquisition-ready SaaS
+Standard: Enterprise-grade, not MVP
+
+🏗️ Architecture Foundation (Week 0 - Pre-Work)
+Before Building Features
+Database Schema Design
+
+PostgreSQL for relational data (users, teams, projects, audit logs)
+Redis for caching and rate limiting
+S3/R2 for file storage (analysis results, backups)
+Design for multi-tenancy from day 1
+
+Authentication & Authorization
+
+Implement JWT with refresh tokens
+Password hashing with bcrypt (12+ rounds)
+OAuth 2.0 for GitHub integration
+Session management with secure cookies
+Rate limiting per user/team
+
+API Architecture
+
+RESTful API design
+OpenAPI 3.0 specification
+Versioning strategy (v1, v2)
+Error handling standards (RFC 7807)
+Request validation with Zod/Joi
+
+Security Foundations
+
+HTTPS everywhere
+CORS configuration
+CSRF protection
+SQL injection prevention (parameterized queries)
+XSS protection (CSP headers)
+Input sanitization
+
+Monitoring & Observability
+
+Error tracking (Sentry)
+Application logs (structured JSON)
+Performance monitoring (response times)
+Database query monitoring
+Uptime monitoring
+
+
+📋 Phase 1: Core Enterprise Credibility (Weeks 1-2)
+Feature 1: Team Workspaces
+Business Requirement:
+Multi-tenant SaaS where organizations can create teams, invite members, and manage access to NeuroLint features.
+Technical Specification:
+Database Schema:
+sqlCREATE TABLE organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(100) UNIQUE NOT NULL,
+  owner_id UUID NOT NULL REFERENCES users(id),
+  plan VARCHAR(50) DEFAULT 'free',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE team_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(50) NOT NULL CHECK (role IN ('owner', 'admin', 'member')),
+  invited_by UUID REFERENCES users(id),
+  invited_at TIMESTAMPTZ DEFAULT NOW(),
+  joined_at TIMESTAMPTZ,
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'suspended')),
+  UNIQUE(organization_id, user_id)
+);
+
+CREATE TABLE team_invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL,
+  token VARCHAR(255) UNIQUE NOT NULL,
+  invited_by UUID REFERENCES users(id),
+  expires_at TIMESTAMPTZ NOT NULL,
+  accepted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_team_members_org ON team_members(organization_id);
+CREATE INDEX idx_team_members_user ON team_members(user_id);
+CREATE INDEX idx_invitations_token ON team_invitations(token);
+API Endpoints:
+typescript// Organizations
+POST   /api/v1/organizations              // Create organization
+GET    /api/v1/organizations              // List user's organizations
+GET    /api/v1/organizations/:id          // Get organization details
+PATCH  /api/v1/organizations/:id          // Update organization
+DELETE /api/v1/organizations/:id          // Delete organization (soft delete)
+
+// Team Members
+GET    /api/v1/organizations/:id/members  // List members
+POST   /api/v1/organizations/:id/invite   // Invite member
+DELETE /api/v1/organizations/:id/members/:userId  // Remove member
+PATCH  /api/v1/organizations/:id/members/:userId  // Update role
+
+// Invitations
+GET    /api/v1/invitations                // List pending invitations
+POST   /api/v1/invitations/:token/accept  // Accept invitation
+POST   /api/v1/invitations/:token/decline // Decline invitation
+DELETE /api/v1/invitations/:id            // Revoke invitation
+Implementation Requirements:
+
+Email Invitation System
+
+Use transactional email service (Resend, SendGrid, or AWS SES)
+Email templates for invitations
+Secure token generation (32+ bytes, cryptographically random)
+7-day expiration on invitation tokens
+Prevent duplicate invitations
+Handle edge cases (user already member, email typos)
+
+
+Role-Based Access Control (RBAC)
+
+Owner: Full control, cannot be removed, can transfer ownership
+Admin: Manage members, projects, settings (cannot delete org)
+Member: Run analyses, view results only
+Middleware for permission checking on every request
+
+
+Slug Generation
+
+Auto-generate from organization name
+Ensure uniqueness with collision handling
+Allow custom slugs (validation: lowercase, alphanumeric, hyphens)
+
+
+Validation & Error Handling
+
+Email validation (RFC 5322 compliant)
+Name length limits (3-255 chars)
+Slug format validation
+Prevent self-removal for owners
+Handle orphaned organizations (last owner leaves)
+
+
+Testing Requirements
+
+Unit tests for RBAC logic
+Integration tests for invite flow
+E2E tests for member management
+Test edge cases (expired tokens, duplicate invites)
+
+
+
+UI/UX Requirements:
+
+Organization switcher in header
+Team settings page with member list
+Invite modal with email input and role selector
+Pending invitations list with revoke option
+Member cards with role badges
+Confirmation modals for destructive actions
+
+Acceptance Criteria:
+✅ User can create unlimited organizations (free plan)
+✅ Owner can invite members via email
+✅ Invited user receives email with secure link
+✅ User can accept/decline invitation
+✅ Admin can remove members (except owner)
+✅ Owner can transfer ownership
+✅ Invitation expires after 7 days
+✅ No duplicate email invitations per org
+✅ Soft delete organizations preserve data for 30 days
+
+Feature 2: Project-Based Analysis
+Business Requirement:
+Teams need to organize codebases into projects, track analysis history per project, and configure project-specific rules.
+Technical Specification:
+Database Schema:
+sqlCREATE TABLE projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(100) NOT NULL,
+  description TEXT,
+  repository_url VARCHAR(500),
+  repository_provider VARCHAR(50) CHECK (repository_provider IN ('github', 'gitlab', 'bitbucket', 'custom')),
+  default_branch VARCHAR(100) DEFAULT 'main',
+  config JSONB DEFAULT '{}',
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  UNIQUE(organization_id, slug)
+);
+
+CREATE TABLE analysis_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  triggered_by UUID REFERENCES users(id),
+  trigger_type VARCHAR(50) CHECK (trigger_type IN ('manual', 'cli', 'api', 'webhook', 'scheduled')),
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  duration_ms INTEGER,
+  files_analyzed INTEGER DEFAULT 0,
+  issues_found INTEGER DEFAULT 0,
+  issues_fixed INTEGER DEFAULT 0,
+  config_snapshot JSONB,
+  error_message TEXT,
+  results_url VARCHAR(500),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE analysis_issues (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  analysis_run_id UUID NOT NULL REFERENCES analysis_runs(id) ON DELETE CASCADE,
+  file_path VARCHAR(500) NOT NULL,
+  line_number INTEGER,
+  column_number INTEGER,
+  rule_id VARCHAR(100) NOT NULL,
+  severity VARCHAR(50) CHECK (severity IN ('error', 'warning', 'info')),
+  message TEXT NOT NULL,
+  fixed BOOLEAN DEFAULT FALSE,
+  fix_applied_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_projects_org ON projects(organization_id);
+CREATE INDEX idx_analysis_runs_project ON analysis_runs(project_id);
+CREATE INDEX idx_analysis_runs_org ON analysis_runs(organization_id);
+CREATE INDEX idx_analysis_runs_status ON analysis_runs(status);
+CREATE INDEX idx_analysis_issues_run ON analysis_issues(analysis_run_id);
+CREATE INDEX idx_analysis_issues_rule ON analysis_issues(rule_id);
+API Endpoints:
+typescript// Projects
+POST   /api/v1/organizations/:orgId/projects           // Create project
+GET    /api/v1/organizations/:orgId/projects           // List projects
+GET    /api/v1/organizations/:orgId/projects/:id       // Get project
+PATCH  /api/v1/organizations/:orgId/projects/:id       // Update project
+DELETE /api/v1/organizations/:orgId/projects/:id       // Delete project
+
+// Analysis Runs
+POST   /api/v1/projects/:projectId/analyze             // Trigger analysis
+GET    /api/v1/projects/:projectId/runs                // List runs
+GET    /api/v1/projects/:projectId/runs/:id            // Get run details
+POST   /api/v1/projects/:projectId/runs/:id/cancel     // Cancel running analysis
+
+// Analysis Results
+GET    /api/v1/runs/:runId/issues                      // Get issues for run
+GET    /api/v1/runs/:runId/summary                     // Get summary stats
+GET    /api/v1/runs/:runId/download                    // Download full report
+Implementation Requirements:
+
+Project Configuration
+
+Store rule preferences in JSONB column
+Default configurations from organization
+Override capability at project level
+Validation of config schema
+
+
+Analysis Execution
+
+Background job queue (BullMQ/Celery)
+Worker processes for running NeuroLint CLI
+Timeout handling (max 30 minutes per analysis)
+Graceful cancellation support
+Resource limits (memory, CPU)
+
+
+Results Storage
+
+Store detailed results in S3/R2
+Keep summary in database for quick access
+Compress large result files (gzip)
+Generate presigned URLs for downloads
+Retention policy (90 days for free, unlimited for paid)
+
+
+Real-time Progress Updates
+
+WebSocket connection for live progress
+Server-Sent Events (SSE) fallback
+Progress percentage calculation
+File-by-file processing updates
+
+
+Error Handling
+
+Capture CLI errors with full context
+Retry logic for transient failures (3 attempts)
+Dead letter queue for failed jobs
+Alert on repeated failures
+
+
+
+UI/UX Requirements:
+
+Project dashboard with quick stats
+"New Project" wizard
+Project settings page
+Analysis history table with filters
+Live progress bar during analysis
+Detailed results viewer with code diffs
+Download button for full reports
+Issue categorization and filtering
+
+Acceptance Criteria:
+✅ User can create project with name and repository URL
+✅ Projects scoped to organization
+✅ Unique project slugs within organization
+✅ Trigger analysis via UI or API
+✅ See real-time analysis progress
+✅ View detailed results after completion
+✅ Filter issues by severity, rule, or file
+✅ Download full analysis report (JSON/CSV)
+✅ Cancel in-progress analysis
+✅ Analysis timeout after 30 minutes
+✅ Store analysis history for 90 days minimum
+
+Feature 3: GitHub Integration (OAuth)
+Business Requirement:
+Users authenticate with GitHub, connect repositories, and run NeuroLint analysis directly on GitHub code without manual uploads.
+Technical Specification:
+Database Schema:
+sqlCREATE TABLE integrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  provider VARCHAR(50) NOT NULL CHECK (provider IN ('github', 'gitlab', 'bitbucket')),
+  installation_id VARCHAR(255),
+  access_token TEXT NOT NULL,  -- Encrypted
+  refresh_token TEXT,          -- Encrypted
+  token_expires_at TIMESTAMPTZ,
+  scopes TEXT[],
+  metadata JSONB DEFAULT '{}',
+  installed_by UUID REFERENCES users(id),
+  installed_at TIMESTAMPTZ DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ,
+  status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'expired', 'revoked')),
+  UNIQUE(organization_id, provider)
+);
+
+CREATE TABLE repository_connections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  integration_id UUID NOT NULL REFERENCES integrations(id) ON DELETE CASCADE,
+  repository_full_name VARCHAR(255) NOT NULL,  -- e.g., "owner/repo"
+  repository_id VARCHAR(100),
+  default_branch VARCHAR(100) DEFAULT 'main',
+  webhook_id VARCHAR(100),
+  webhook_secret VARCHAR(255),
+  auto_analyze BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_integrations_org ON integrations(organization_id);
+CREATE INDEX idx_repo_connections_project ON repository_connections(project_id);
+CREATE INDEX idx_repo_connections_integration ON repository_connections(integration_id);
+API Endpoints:
+typescript// OAuth Flow
+GET    /api/v1/auth/github/authorize          // Redirect to GitHub OAuth
+GET    /api/v1/auth/github/callback           // Handle OAuth callback
+
+// GitHub Integration
+POST   /api/v1/organizations/:orgId/integrations/github        // Connect GitHub
+DELETE /api/v1/organizations/:orgId/integrations/github        // Disconnect GitHub
+GET    /api/v1/organizations/:orgId/integrations/github/repos  // List repositories
+POST   /api/v1/organizations/:orgId/integrations/github/repos/:repoId/connect  // Connect repo to project
+
+// Repository Actions
+POST   /api/v1/repositories/:id/analyze       // Trigger analysis on connected repo
+POST   /api/v1/repositories/:id/sync          // Sync repository metadata
+Implementation Requirements:
+
+GitHub OAuth 2.0 Flow
+
+Register GitHub App (not OAuth App - supports installations)
+Request scopes: repo, read:user, read:org
+PKCE flow for additional security
+State parameter to prevent CSRF
+Handle OAuth errors gracefully
+
+
+Token Management
+
+Encrypt tokens at rest (AES-256-GCM)
+Store encryption key in secure vault (AWS KMS, HashiCorp Vault)
+Automatic token refresh before expiration
+Revocation handling (detect and notify user)
+
+
+Repository Access
+
+Use GitHub API v3/v4 (GraphQL for efficient queries)
+Clone repository or fetch files via API
+Support private repositories
+Rate limit handling (5000 requests/hour)
+Implement exponential backoff for API failures
+
+
+Code Fetching Strategy
+
+For small repos (<100 files): Fetch via API
+For large repos: Shallow clone with --depth 1
+Stream large files to avoid memory issues
+Cleanup temporary files after analysis
+Support monorepos (analyze specific directories)
+
+
+Webhook Setup (Optional but Recommended)
+
+Register webhook on repository connection
+Verify webhook signatures (HMAC SHA-256)
+Handle events: push, pull_request
+Auto-trigger analysis on new commits
+Idempotency (prevent duplicate analyses)
+
+
+Security Considerations
+
+Never log tokens
+Rotate webhook secrets periodically
+Validate repository access before each operation
+Implement IP allowlisting for webhooks
+Audit all GitHub API calls
+
+
+
+UI/UX Requirements:
+
+"Connect GitHub" button with OAuth flow
+Repository browser with search
+Repository connection status indicator
+Auto-analyze toggle switch
+Branch selector for analysis
+Visual diff viewer for fixes
+"Create Pull Request" button (future enhancement)
+
+Acceptance Criteria:
+✅ User authenticates via GitHub OAuth
+✅ App requests minimal required scopes
+✅ User can browse accessible repositories
+✅ User can connect repository to project
+✅ Analysis fetches latest code from GitHub
+✅ Supports both public and private repos
+✅ Handles GitHub API rate limits gracefully
+✅ Tokens encrypted at rest
+✅ Auto-refresh tokens before expiration
+✅ Detect and handle revoked tokens
+✅ Webhook signature verification
+✅ Auto-trigger analysis on push (if enabled)
+
+📋 Phase 2: Security & Compliance (Weeks 3-4)
+Feature 4: Audit Logs
+Business Requirement:
+Enterprise customers require complete traceability of all actions performed within the system for compliance (SOC 2, ISO 27001, GDPR).
+Technical Specification:
+Database Schema:
+sqlCREATE TABLE audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  actor_type VARCHAR(50) DEFAULT 'user' CHECK (actor_type IN ('user', 'system', 'api', 'webhook')),
+  actor_ip_address INET,
+  actor_user_agent TEXT,
+  
+  action VARCHAR(100) NOT NULL,
+  resource_type VARCHAR(100) NOT NULL,
+  resource_id UUID,
+  resource_name VARCHAR(255),
+  
+  status VARCHAR(50) CHECK (status IN ('success', 'failure', 'pending')),
+  error_message TEXT,
+  
+  metadata JSONB DEFAULT '{}',
+  changes JSONB,  -- Before/after for updates
+  
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_audit_logs_org ON audit_logs(organization_id);
+CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+CREATE INDEX idx_audit_logs_created ON audit_logs(created_at DESC);
+
+-- Partition by month for performance
+CREATE TABLE audit_logs_2025_01 PARTITION OF audit_logs
+  FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
+Events to Audit:
+User Actions:
+
+user.login - User signed in
+user.logout - User signed out
+user.password_changed - Password updated
+user.mfa_enabled - MFA activated
+user.mfa_disabled - MFA deactivated
+
+Organization Actions:
+
+organization.created - New organization
+organization.updated - Settings changed
+organization.deleted - Organization deleted
+
+Team Actions:
+
+team.member_invited - Member invitation sent
+team.member_added - Member joined
+team.member_removed - Member removed
+team.role_changed - Member role updated
+
+Project Actions:
+
+project.created - New project
+project.updated - Project settings changed
+project.deleted - Project deleted
+project.analyzed - Analysis triggered
+project.fixed - Fixes applied
+
+Integration Actions:
+
+integration.github_connected - GitHub connected
+integration.github_disconnected - GitHub disconnected
+integration.repository_connected - Repo linked
+integration.webhook_received - Webhook processed
+
+Security Actions:
+
+security.api_key_created - API key generated
+security.api_key_revoked - API key revoked
+security.suspicious_activity - Rate limit exceeded, unusual location
+security.permission_denied - Unauthorized access attempt
+
+API Endpoints:
+typescriptGET /api/v1/organizations/:orgId/audit-logs
+  Query params:
+    - user_id: UUID
+    - action: string
+    - resource_type: string
+    - start_date: ISO 8601
+    - end_date: ISO 8601
+    - limit: number (max 1000)
+    - offset: number
+
+GET /api/v1/organizations/:orgId/audit-logs/export
+  Format: CSV or JSON
+  Filtered by same query params
+Implementation Requirements:
+
+Logging Middleware
+
+Intercept all API requests
+Extract user context (user_id, org_id, IP, user agent)
+Log action, resource, and outcome
+Async logging (don't block requests)
+Batch inserts for performance
+
+
+Change Tracking
+
+Capture before/after state for updates
+Store only changed fields to minimize storage
+Exclude sensitive data (passwords, tokens)
+Use JSON diff for complex objects
+
+
+Retention & Archival
+
+Free plan: 30 days retention
+Paid plan: 1 year retention
+Archive to cold storage (S3 Glacier) after retention period
+Automated cleanup jobs (weekly)
+
+
+Search & Filtering
+
+Full-text search on action and resource_name
+Date range filtering
+User filtering
+Action type filtering
+Export filtered results to CSV/JSON
+
+
+Performance Optimization
+
+Partitioning by month (PostgreSQL table partitions)
+Index on commonly filtered columns
+Pagination with cursor-based approach
+Caching for frequently accessed ranges
+
+
+
+UI/UX Requirements:
+
+Audit log viewer with table
+Advanced filters (user, action, date range)
+Search bar for quick lookup
+Export button (CSV/JSON)
+Detail modal for each log entry
+Timeline view (optional enhancement)
+Real-time log streaming for admins
+
+Acceptance Criteria:
+✅ All user actions logged automatically
+✅ System actions logged (scheduled jobs, webhooks)
+✅ Capture IP address and user agent
+✅ Before/after state for updates
+✅ Filter by user, action, date range
+✅ Export audit logs to CSV/JSON
+✅ Pagination for large result sets
+✅ Logs retained per plan limits
+✅ Performance <500ms for filtered queries
+✅ Sensitive data excluded from logs
+
+Feature 5: Security & Compliance Page
+Business Requirement:
+Demonstrate security posture and compliance readiness to enterprise buyers and security teams during evaluation.
+Technical Specification:
+Content Requirements:
+1. Security Overview Section
+markdown# Security at NeuroLint
+
+## Data Encryption
+- **In Transit**: All data transmitted over TLS 1.3
+- **At Rest**: AES-256-GCM encryption for stored data
+- **Database**: Encrypted PostgreSQL with column-level encryption for tokens
+- **Backups**: Encrypted automated daily backups with 30-day retention
+
+## Infrastructure Security
+- **Hosting**: AWS/Vercel with SOC 2 Type II certified infrastructure
+- **Network**: Private VPCs with strict firewall rules
+- **Access Control**: Role-based access with principle of least privilege
+- **Monitoring**: 24/7 security monitoring and alerting
+
+## Authentication & Authorization
+- **Password Security**: Bcrypt hashing with 12+ rounds
+- **Multi-Factor Authentication**: TOTP-based MFA available
+- **Session Management**: Secure JWT tokens with short expiration
+- **OAuth 2.0**: Industry-standard authentication for GitHub integration
+
+## Application Security
+- **Input Validation**: All inputs sanitized and validated
+- **SQL Injection Prevention**: Parameterized queries only
+- **XSS Protection**: Content Security Policy headers
+- **CSRF Protection**: Token-based CSRF protection
+- **Rate Limiting**: API rate limits to prevent abuse
+2. Compliance Section
+markdown## Compliance Commitments
+
+### GDPR Compliance
+- Right to access personal data
+- Right to data portability
+- Right to erasure (30-day grace period)
+- Data processing agreements available
+- EU data residency options (coming Q2 2025)
+
+### SOC 2 Type II (In Progress)
+- Expected completion: Q3 2025
+- Third-party audit by [Auditor Name]
+- Coverage: Security, Availability, Confidentiality
+
+### ISO 27001 (Planned)
+- Target certification: 2026
+- Information Security Management System in development
+
+### Data Retention
+- Analysis results: 90 days (free), unlimited (paid)
+- Audit logs: 30 days (free), 1 year (paid)
+- User data: Retained until account deletion + 30 days
+- Backups: 30-day rolling retention
+3. Data Handling Section
+markdown## How We Handle Your Code
+
+### What We Store
+- Analysis results (issues found, fixes applied)
+- Project metadata (name, repository URL)
+- User information (email, name, organization)
+
+### What We DON'T Store
+- Your complete source code
+- Environment variables or secrets
+- API keys or credentials (except encrypted OAuth tokens)
+- Production data or databases
+
+### Code Processing
+1. Code is fetched temporarily for analysis
+2. Analysis runs in isolated containers
+3. Only results are stored (not full code)
+4. Temporary files deleted immediately after analysis
+5. No code shared with third parties
+
+### Third-Party Services
+- **Email**: Resend (SOC 2 Type II certified)
+- **Hosting**: Vercel/AWS (SOC 2, ISO 27001, PCI DSS)
+- **Monitoring**: Sentry (GDPR compliant)
+- **Analytics**: PostHog (GDPR compliant, EU hosting)
+4. Incident Response Section
+markdown## Security Incident Response
+
+### Reporting Vulnerabilities
+- Email: security@neurolint.dev
+- Response time: <24 hours for critical issues
+- Bug bounty program: Coming Q2 2025
+
+### Our Commitment
+- Acknowledge reports within 24 hours
+- Provide regular updates on investigation
+- Notify affected users within 72 hours (GDPR requirement)
+- Public disclosure after fix is deployed (coordinated disclosure)
+
+### Past Incidents
+- No security incidents to date (as of Dec 2025)
+5. Penetration Testing Section
+markdown## Security Testing
+
+### Regular Testing
+- Automated vulnerability scanning (daily)
+- Dependency scanning with Snyk
+- Static application security testing (SAST)
+- Dynamic application security testing (DAST)
+
+### Third-Party Audits
+- Annual penetration testing (planned for 2025)
+- Code audits by security firms
+- Results shared with enterprise customers under NDA
+Implementation Requirements:
+
+Static Security Page
+
+/security route with professional design
+Downloadable security whitepaper (PDF)
+Contact form for security inquiries
+Trust badges (when certifications obtained)
+
+
+Security.txt File
+
+Create /.well-known/security.txt (RFC 9116)
+Include contact email, encryption key, policy URL
+Set expiration date
+
+
+Vulnerability Disclosure Policy
+
+Dedicated page at /security/disclosure
+Clear process for reporting vulnerabilities
+Safe harbor provisions
+Hall of fame for researchers (optional)
+
+
+Trust Center (Optional but High-Impact)
+
+Dedicated subdomain: trust.neurolint.dev
+System status page
+Uptime statistics
+Security updates feed
+Compliance documentation downloads
+
+
+Security Headers
+
+Implement all OWASP recommended headers
+Strict-Transport-Security
+Content-Security-Policy
+X-Frame-Options
+X-Content-Type-Options
+Test with securityheaders.com (aim for A+ rating)
+
+
+
+UI/UX Requirements:
+
+Clean, professional design (not marketing fluff)
+Easy navigation between sections
+Download button for security whitepaper
+Contact form for security team
+Trust badges displayed prominently
+Mobile-responsive layout
+
+Acceptance Criteria:
+✅ Comprehensive security overview page
+✅ Clear data handling policies
+✅ GDPR compliance statements
+✅ Incident response procedures documented
+✅ security.txt file implemented
+✅ Vulnerability disclosure policy published
+✅ All security headers configured (A+ rating)
+✅ Downloadable security whitepaper
+✅ Security contact email set up
+✅ Professional, non-marketing tone throughout
+
+📋 Phase 3: Enterprise Controls (Weeks 5-6)
+Feature 6: Role-Based Access Control (RBAC)
+Business Requirement:
+Granular permission system that controls who can perform specific actions within an organization, meeting enterprise security requirements.
+Technical Specification:
+Permission Matrix:
+PermissionOwnerAdminMemberViewer (Future)View organization✅✅✅✅Update org settings✅✅❌❌Delete organization✅❌❌❌Invite members✅✅❌❌Remove members✅✅❌❌Change member roles✅✅❌❌Create projects✅✅✅❌Delete projects✅✅❌❌Run analysis✅✅✅❌Apply fixes✅✅✅❌View audit logs✅✅❌❌Manage integrations✅✅❌❌Manage API keys✅✅❌❌View billing✅✅❌❌Update billing✅❌❌❌
+Database Schema:
+sqlCREATE TABLE permissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) UNIQUE NOT NULL,
+  resource VARCHAR(100) NOT NULL,
+  action VARCHAR(100) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE role_permissions (
+  role VARCHAR(50) NOT NULL CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  PRIMARY KEY (role, permission_id)
+);
+
+-- Seed permissions
+INSERT INTO permissions (name, resource, action, description) VALUES
+  ('org:read', 'organization', 'read', 'View organization details'),
+  ('org:update', 'organization', 'update', 'Update organization settings'),
+  ('org:delete', 'organization', 'delete', 'Delete organization'),
+  ('member:invite', 'team_member', 'create', 'Invite new members'),
+  ('member:remove', 'team_member', 'delete', 'Remove team members'),
+  ('member:update', 'team_member', 'update', 'Change member roles'),
+  ('project:create', 'project', 'create', 'Create new projects'),
+  ('project:read', 'project', 'read', 'View project details'),
+  ('project:update', 'project', 'updateMContinue', 'Update project settings'),
+('project:delete', 'project', 'delete', 'Delete projects'),
+('analysis:run', 'analysis', 'create', 'Trigger code analysis'),
+('analysis:read', 'analysis', 'read', 'View analysis results'),
+('audit:read', 'audit_log', 'read', 'View audit logs'),
+('integration:manage', 'integration', 'manage', 'Connect/disconnect integrations'),
+('apikey:manage', 'api_key', 'manage', 'Create/revoke API keys'),
+('billing:read', 'billing', 'read', 'View billing information'),
+('billing:update', 'billing', 'update', 'Update payment methods');
+-- Assign permissions to roles
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'owner', id FROM permissions;  -- Owner gets everything
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'admin', id FROM permissions
+WHERE name NOT IN ('org:delete', 'billing:update');  -- Admin gets most
+INSERT INTO role_permissions (role, permission_id)
+SELECT 'member', id FROM permissions
+WHERE name IN (
+'org:read', 'project:create', 'project:read', 'project:update',
+'analysis:run', 'analysis:read'
+);
+
+**Implementation Requirements:**
+
+1. **Permission Checking Middleware**
+```typescript
+// Express middleware example
+function requirePermission(permission: string) {
+  return async (req, res, next) => {
+    const { userId, organizationId } = req.user;
+    
+    // Get user's role in organization
+    const member = await db.teamMembers.findOne({
+      where: { userId, organizationId }
+    });
+    
+    if (!member) {
+      return res.status(403).json({ error: 'Not a member of this organization' });
+    }
+    
+    // Check if role has permission
+    const hasPermission = await db.rolePermissions.findOne({
+      where: {
+        role: member.role,
+        permission: { name: permission }
+      }
+    });
+    
+    if (!hasPermission) {
+      // Log unauthorized attempt
+      await auditLog({
+        organizationId,
+        userId,
+        action: 'security.permission_denied',
+        resourceType: 'permission',
+        resourceName: permission,
+        status: 'failure'
+      });
+      
+      return res.status(403).json({ 
+        error: 'Insufficient permissions',
+        required: permission,
+        current_role: member.role
+      });
+    }
+    
+    next();
+  };
+}
+
+// Usage in routes
+router.delete(
+  '/organizations/:id',
+  authenticate,
+  requirePermission('org:delete'),
+  deleteOrganization
+);
+```
+
+2. **Frontend Permission Checks**
+```typescript
+// React hook for permission checking
+function usePermissions(organizationId: string) {
+  const { user } = useAuth();
+  const { data: member } = useQuery(['member', organizationId], () =>
+    api.getOrganizationMember(organizationId, user.id)
+  );
+  
+  const hasPermission = (permission: string): boolean => {
+    if (!member) return false;
+    return ROLE_PERMISSIONS[member.role].includes(permission);
+  };
+  
+  return { hasPermission, role: member?.role };
+}
+
+// Usage in components
+function ProjectSettings() {
+  const { hasPermission } = usePermissions(orgId);
+  
+  return (
+    <>
+      {hasPermission('project:update') && (
+        <Button onClick={handleSave}>Save Changes</Button>
+      )}
+      {hasPermission('project:delete') && (
+        <Button variant="danger" onClick={handleDelete}>
+          Delete Project
+        </Button>
+      )}
+    </>
+  );
+}
+```
+
+3. **Role Transition Rules**
+   - Owner can transfer ownership to admin
+   - Owner cannot be downgraded (must transfer first)
+   - Admin can promote members to admin
+   - Admin cannot promote to owner
+   - Organization must always have exactly one owner
+   - Prevent last admin from leaving
+
+4. **Permission Caching**
+   - Cache user permissions in Redis (5-minute TTL)
+   - Invalidate cache on role change
+   - Use cache for performance on high-traffic endpoints
+   - Fallback to database if cache miss
+
+5. **Audit All Permission Denials**
+   - Log every failed permission check
+   - Include requested permission and user's role
+   - Alert on repeated failures (possible attack)
+   - Dashboard showing permission denial trends
+
+**UI/UX Requirements:**
+- Role badge on member cards
+- Permission tooltips on restricted actions
+- Disabled buttons with explanation tooltips
+- Role comparison table in docs
+- Visual hierarchy (Owner > Admin > Member)
+- Confirmation modals for role changes
+
+**Acceptance Criteria:**
+✅ All API endpoints protected by permission checks  
+✅ Frontend hides/disables unauthorized actions  
+✅ Owner has full permissions  
+✅ Admin has most permissions (except delete org, billing)  
+✅ Member has limited permissions  
+✅ Permission denials logged to audit log  
+✅ Performance: <50ms for permission checks (cached)  
+✅ Prevent organization from having zero owners  
+✅ Owner can transfer ownership  
+✅ Role changes reflected immediately (cache invalidation)  
+
+---
+
+### Feature 7: Rules & Fix Packs Dashboard
+
+**Business Requirement:**
+Give teams visibility and control over which code transformations NeuroLint applies, with the ability to enable/disable rule categories and customize behavior.
+
+**Technical Specification:**
+
+**Rule Categories (Fix Packs):**
+
+1. **Security** - CVE fixes, unsafe patterns
+2. **React Server Components** - 'use client', hydration fixes
+3. **Accessibility** - WCAG 2.1 AA compliance
+4. **TypeScript** - Type fixes, strict mode issues
+5. **ESLint** - Code quality, unused vars, console.log
+6. **Next.js** - App Router optimizations, metadata
+7. **Testing** - Error boundaries, test scaffolding
+
+**Database Schema:**
+```sql
+CREATE TABLE rule_definitions (
+  id VARCHAR(100) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  category VARCHAR(50) NOT NULL,
+  severity VARCHAR(50) CHECK (severity IN ('error', 'warning', 'info')),
+  fix_pack VARCHAR(50) NOT NULL,
+  default_enabled BOOLEAN DEFAULT TRUE,
+  docs_url VARCHAR(500),
+  example_before TEXT,
+  example_after TEXT,
+  version_added VARCHAR(20),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE organization_rule_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  rule_id VARCHAR(100) NOT NULL REFERENCES rule_definitions(id),
+  enabled BOOLEAN DEFAULT TRUE,
+  config JSONB DEFAULT '{}',
+  updated_by UUID REFERENCES users(id),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(organization_id, rule_id)
+);
+
+CREATE TABLE project_rule_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  rule_id VARCHAR(100) NOT NULL REFERENCES rule_definitions(id),
+  enabled BOOLEAN DEFAULT TRUE,
+  config JSONB DEFAULT '{}',
+  updated_by UUID REFERENCES users(id),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(project_id, rule_id)
+);
+
+CREATE INDEX idx_org_rules_org ON organization_rule_configs(organization_id);
+CREATE INDEX idx_project_rules_project ON project_rule_configs(project_id);
+```
+
+**Seed Rule Definitions:**
+```sql
+-- Security Pack
+INSERT INTO rule_definitions VALUES
+  ('security-cve-2025-55182', 'CVE-2025-55182 Patch', 'Patches React Server Components RCE vulnerability', 'security', 'error', 'security', true, 'https://neurolint.dev/rules/cve-2025-55182', 'react: ^19.0.0', 'react: 19.0.1', '1.4.0'),
+  ('security-unsafe-eval', 'Remove eval()', 'Removes dangerous eval() calls', 'security', 'error', 'security', true, null, 'eval(code)', '// eval removed', '1.0.0');
+
+-- RSC Pack
+INSERT INTO rule_definitions VALUES
+  ('rsc-use-client', 'Add use client directive', 'Adds use client to components with hooks', 'react', 'warning', 'rsc', true, null, 'function Button()', "'use client'\nfunction Button()", '1.0.0'),
+  ('rsc-hydration', 'Fix hydration errors', 'Prevents window/localStorage access during SSR', 'react', 'error', 'rsc', true, null, 'window.location', 'typeof window !== "undefined" && window.location', '1.0.0');
+
+-- Accessibility Pack
+INSERT INTO rule_definitions VALUES
+  ('a11y-img-alt', 'Add alt text to images', 'Ensures all images have alt attributes', 'accessibility', 'error', 'accessibility', true, null, '<img src="..." />', '<img src="..." alt="description" />', '1.0.0'),
+  ('a11y-button-type', 'Add button type', 'Adds type="button" to prevent form submission', 'accessibility', 'warning', 'accessibility', true, null, '<button>', '<button type="button">', '1.0.0');
+
+-- TypeScript Pack
+INSERT INTO rule_definitions VALUES
+  ('ts-strict-null', 'Fix strict null checks', 'Adds null checks for strict mode', 'typescript', 'error', 'typescript', true, null, 'obj.prop', 'obj?.prop', '1.0.0'),
+  ('ts-any-to-unknown', 'Replace any with unknown', 'Replaces any types with unknown', 'typescript', 'warning', 'typescript', false, null, 'param: any', 'param: unknown', '1.0.0');
+
+-- ESLint Pack  
+INSERT INTO rule_definitions VALUES
+  ('eslint-console', 'Remove console.log', 'Removes debugging console statements', 'code-quality', 'warning', 'eslint', true, null, 'console.log("test")', '// removed', '1.0.0'),
+  ('eslint-unused-vars', 'Remove unused variables', 'Removes declared but unused variables', 'code-quality', 'warning', 'eslint', true, null, 'const unused = 1', '// removed', '1.0.0');
+
+-- Next.js Pack
+INSERT INTO rule_definitions VALUES
+  ('nextjs-metadata', 'Add metadata export', 'Adds metadata export for SEO', 'nextjs', 'info', 'nextjs', true, null, 'export default function Page()', 'export const metadata = {...}\nexport default function Page()', '1.2.0'),
+  ('nextjs-image', 'Convert img to Image', 'Replaces <img> with next/image', 'nextjs', 'warning', 'nextjs', true, null, '<img src="..." />', '<Image src="..." width={500} height={300} />', '1.0.0');
+```
+
+**API Endpoints:**
+```typescript
+// Rule Definitions
+GET /api/v1/rules                             // List all available rules
+GET /api/v1/rules/:id                         // Get rule details
+GET /api/v1/rules/packs                       // List fix packs
+
+// Organization Rule Config
+GET    /api/v1/organizations/:orgId/rules      // Get org rule config
+PATCH  /api/v1/organizations/:orgId/rules      // Update org rule config (bulk)
+PATCH  /api/v1/organizations/:orgId/rules/:ruleId  // Update single rule
+
+// Project Rule Config (overrides org config)
+GET    /api/v1/projects/:projectId/rules       // Get project rule config
+PATCH  /api/v1/projects/:projectId/rules       // Update project rule config (bulk)
+PATCH  /api/v1/projects/:projectId/rules/:ruleId  // Update single rule
+DELETE /api/v1/projects/:projectId/rules/:ruleId  // Reset to org default
+```
+
+**Implementation Requirements:**
+
+1. **Rule Configuration Hierarchy**
+   - **Global defaults** → defined in `rule_definitions.default_enabled`
+   - **Organization overrides** → stored in `organization_rule_configs`
+   - **Project overrides** → stored in `project_rule_configs`
+   - Precedence: Project > Organization > Global
+
+2. **Config Resolution Logic**
+```typescript
+async function getEffectiveRuleConfig(projectId: string): Promise<RuleConfig[]> {
+  const project = await db.projects.findByPk(projectId);
+  const orgId = project.organization_id;
+  
+  // 1. Get all available rules
+  const allRules = await db.ruleDefinitions.findAll();
+  
+  // 2. Get org-level overrides
+  const orgConfigs = await db.organizationRuleConfigs.findAll({
+    where: { organization_id: orgId }
+  });
+  
+  // 3. Get project-level overrides
+  const projectConfigs = await db.projectRuleConfigs.findAll({
+    where: { project_id: projectId }
+  });
+  
+  // 4. Merge with precedence: project > org > default
+  return allRules.map(rule => {
+    const projectConfig = projectConfigs.find(c => c.rule_id === rule.id);
+    const orgConfig = orgConfigs.find(c => c.rule_id === rule.id);
+    
+    return {
+      id: rule.id,
+      name: rule.name,
+      enabled: projectConfig?.enabled ?? orgConfig?.enabled ?? rule.default_enabled,
+      config: {
+        ...rule.default_config,
+        ...orgConfig?.config,
+        ...projectConfig?.config
+      },
+      source: projectConfig ? 'project' : orgConfig ? 'organization' : 'default'
+    };
+  });
+}
+```
+
+3. **Bulk Update Operations**
+   - Enable/disable entire fix pack at once
+   - "Reset to defaults" button
+   - Import/export config as JSON
+   - Copy config from another project
+
+4. **Rule Documentation**
+   - Each rule has docs page with:
+     - Description
+     - Before/after examples
+     - Configuration options
+     - Related rules
+   - Searchable rule catalog
+
+5. **Usage Analytics**
+   - Track which rules find the most issues
+   - Track which rules users disable
+   - Show rule effectiveness per project
+   - Recommend rules based on codebase
+
+**UI/UX Requirements:**
+
+**Rules Dashboard Page:**
+- List of fix packs with enable/disable toggles
+- Expand pack to see individual rules
+- Search/filter rules
+- Severity badges (error/warning/info)
+- "Enabled in X projects" counter
+- Rule documentation links
+
+**Rule Configuration Modal:**
+- Rule name and description
+- Enable/disable toggle
+- Advanced config options (if any)
+- Before/after code examples
+- "Reset to default" button
+- "Apply to all projects" option (for org admins)
+
+**Project-Specific Overrides:**
+- Badge showing "Overridden" on rules
+- "Inherit from organization" button
+- Visual diff showing what's different from org config
+
+**Acceptance Criteria:**
+✅ All NeuroLint rules seeded in database  
+✅ Organized into logical fix packs  
+✅ Organization-level rule configuration  
+✅ Project-level overrides  
+✅ Config hierarchy correctly implemented  
+✅ Bulk enable/disable fix packs  
+✅ Search and filter rules  
+✅ Export/import rule config as JSON  
+✅ Rule documentation pages  
+✅ Performance: <200ms to load rule config  
+✅ Audit log when rules changed  
+✅ Real-time preview of affected code (optional)  
+
+---
+
+## 📋 Phase 4: Analytics & Integration (Weeks 7-8)
+
+### Feature 8: Usage Analytics Dashboard
+
+**Business Requirement:**
+Provide teams with insights into code quality trends, productivity gains, and return on investment from using NeuroLint.
+
+**Technical Specification:**
+
+**Database Schema:**
+```sql
+CREATE TABLE usage_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  
+  metric_type VARCHAR(100) NOT NULL,
+  metric_value NUMERIC NOT NULL,
+  metric_unit VARCHAR(50),
+  dimensions JSONB DEFAULT '{}',
+  
+  recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_usage_metrics_org ON usage_metrics(organization_id);
+CREATE INDEX idx_usage_metrics_project ON usage_metrics(project_id);
+CREATE INDEX idx_usage_metrics_type ON usage_metrics(metric_type);
+CREATE INDEX idx_usage_metrics_recorded ON usage_metrics(recorded_at DESC);
+
+-- Materialize common aggregations
+CREATE MATERIALIZED VIEW daily_org_metrics AS
+SELECT 
+  organization_id,
+  DATE(recorded_at) as date,
+  metric_type,
+  SUM(metric_value) as total_value,
+  AVG(metric_value) as avg_value,
+  COUNT(*) as count
+FROM usage_metrics
+GROUP BY organization_id, DATE(recorded_at), metric_type;
+
+CREATE UNIQUE INDEX idx_daily_org_metrics ON daily_org_metrics(organization_id, date, metric_type);
+```
+
+**Metrics to Track:**
+
+**1. Analysis Metrics**
+- `analyses_run` - Number of analyses executed
+- `files_analyzed` - Total files scanned
+- `lines_analyzed` - Total lines of code scanned
+
+**2. Issue Detection Metrics**
+- `issues_found` - Total issues detected
+- `issues_by_severity` - Breakdown by error/warning/info
+- `issues_by_category` - Breakdown by security/accessibility/etc
+- `issues_by_rule` - Which rules trigger most
+
+**3. Fix Metrics**
+- `issues_fixed` - Total issues automatically fixed
+- `fixes_applied` - Number of fix operations
+- `fix_success_rate` - Percentage of successful fixes
+
+**4. Time Savings Metrics**
+- `time_saved_minutes` - Estimated manual fix time saved
+- `avg_fix_time` - Average time per fix operation
+
+**5. Engagement Metrics**
+- `active_users` - Daily/weekly active users
+- `analyses_per_user` - Usage frequency
+- `projects_created` - Project growth
+
+**6. Code Quality Trends**
+- `issue_density` - Issues per 1000 LOC
+- `quality_score` - Custom score (0-100)
+- `trend_direction` - Improving/declining
+
+**Calculation Logic:**
+```typescript
+// Time savings estimation
+function estimateTimeSaved(issuesFixed: number): number {
+  const avgMinutesPerManualFix = {
+    'security': 30,      // CVE fixes require research
+    'accessibility': 10,  // Alt text, aria labels
+    'typescript': 15,     // Type fixes
+    'eslint': 5,          // Simple code quality
+    'rsc': 20,            // Hydration, use client
+    'nextjs': 10,         // Metadata, Image components
+  };
+  
+  let totalMinutes = 0;
+  for (const [category, count] of Object.entries(issuesFixed)) {
+    totalMinutes += count * avgMinutesPerManualFix[category];
+  }
+  
+  return totalMinutes;
+}
+
+// Quality score calculation
+function calculateQualityScore(metrics: Metrics): number {
+  const maxScore = 100;
+  const issueDensity = metrics.issuesFound / (metrics.linesOfCode / 1000);
+  
+  // Penalty for high issue density
+  const densityPenalty = Math.min(issueDensity * 2, 50);
+  
+  // Bonus for fixing issues
+  const fixBonus = (metrics.issuesFixed / metrics.issuesFound) * 20;
+  
+  // Bonus for low critical issues
+  const criticalPenalty = metrics.criticalIssues * 5;
+  
+  return Math.max(0, Math.min(maxScore, 
+    maxScore - densityPenalty + fixBonus - criticalPenalty
+  ));
+}
+```
+
+**API Endpoints:**
+```typescript
+// Overview
+GET /api/v1/organizations/:orgId/analytics/overview
+  Response: {
+    analyses_run_this_week: number,
+    issues_found_this_week: number,
+    issues_fixed_this_week: number,
+    time_saved_minutes: number,
+    active_users_this_week: number,
+    quality_score: number,
+    quality_trend: 'up' | 'down' | 'stable'
+  }
+
+// Time Series Data
+GET /api/v1/organizations/:orgId/analytics/timeseries
+  Query params:
+    - metric: 'analyses' | 'issues' | 'fixes'
+    - period: '7d' | '30d' | '90d' | '1y'
+    - granularity: 'day' | 'week' | 'month'
+  Response: {
+    data: Array<{ date: string, value: number }>,
+    comparison: { previous_period: number, change_percent: number }
+  }
+
+// Breakdown by Category
+GET /api/v1/organizations/:orgId/analytics/issues/breakdown
+  Response: {
+    by_severity: { error: number, warning: number, info: number },
+    by_category: { security: number, accessibility: number, ... },
+    top_rules: Array<{ rule_id: string, count: number }>
+  }
+
+// Project Comparison
+GET /api/v1/organizations/:orgId/analytics/projects
+  Response: Array<{
+    project_id: string,
+    project_name: string,
+    analyses_run: number,
+    issues_found: number,
+    quality_score: number
+  }>
+
+// User Activity
+GET /api/v1/organizations/:orgId/analytics/users
+  Response: Array<{
+    user_id: string,
+    user_name: string,
+    analyses_run: number,
+    issues_fixed: number,
+    last_active: string
+  }>
+```
+
+**Implementation Requirements:**
+
+1. **Real-Time Metric Collection**
+   - Emit metrics at key points in analysis pipeline
+   - Use event-driven architecture (pub/sub)
+   - Batch insert metrics (every 10 seconds)
+   - Async to not block main operations
+
+2. **Aggregation Strategy**
+   - Pre-aggregate common queries (materialized views)
+   - Refresh materialized views every 15 minutes
+   - Cache frequently accessed metrics (Redis, 5-min TTL)
+   - Use database functions for complex aggregations
+
+3. **Performance Optimization**
+   - Partition `usage_metrics` table by month
+   - Use time-series optimized database (TimescaleDB)
+   - Downsample old data (keep daily after 90 days)
+   - Archive data older than 1 year
+
+4. **Comparison Features**
+   - Week-over-week comparison
+   - Month-over-month comparison
+   - Project-to-project comparison
+   - Benchmark against industry averages (future)
+
+5. **Export Capabilities**
+   - Export charts as PNG
+   - Export data as CSV
+   - Scheduled email reports
+   - Webhook for external BI tools
+
+**UI/UX Requirements:**
+
+**Dashboard Layout:**
+
+**Top Row - Key Metrics Cards:**
+- Analyses This Week (with % change)
+- Issues Fixed This Week (with % change)
+- Time Saved (hours, with % change)
+- Quality Score (0-100, with trend indicator)
+
+**Second Row - Charts:**
+- Line chart: Issues over time (by severity)
+- Bar chart: Issues by category
+- Pie chart: Fix success rate
+
+**Third Row - Tables:**
+- Top 5 projects (by quality score)
+- Most active users
+- Most common issues
+
+**Filters:**
+- Date range selector (7d, 30d, 90d, custom)
+- Project filter (all, specific projects)
+- User filter (all, specific users)
+
+**Interactions:**
+- Click chart to drill down
+- Hover for detailed tooltips
+- Export button for each chart
+- "View Details" links to underlying data
+
+**Acceptance Criteria:**
+✅ Real-time metrics collected on every analysis  
+✅ Dashboard loads in <2 seconds  
+✅ Time series charts with selectable ranges  
+✅ Breakdown by severity, category, and rule  
+✅ Project comparison table  
+✅ User activity tracking  
+✅ Week-over-week comparison  
+✅ Quality score calculation  
+✅ Time savings estimation  
+✅ Export charts as PNG  
+✅ Export data as CSV  
+✅ Mobile-responsive dashboard  
+✅ Automatic cache refresh  
+✅ Historical data retained per plan limits  
+
+---
+
+### Feature 9: CI/CD Integration Templates
+
+**Business Requirement:**
+Enable teams to integrate NeuroLint into their continuous integration pipelines for automated code quality checks on every commit or pull request.
+
+**Technical Specification:**
+
+**Supported CI/CD Platforms:**
+1. GitHub Actions
+2. GitLab CI
+3. Jenkins
+4. CircleCI
+5. Travis CI
+6. Bitbucket Pipelines
+
+**Integration Patterns:**
+
+**Pattern 1: Pre-Commit Check (Blocking)**
+- Runs NeuroLint on changed files only
+- Fails build if critical issues found
+- Fast feedback (< 2 minutes)
+
+**Pattern 2: Full Analysis (Non-Blocking)**
+- Runs full codebase analysis
+- Posts results as PR comment
+- Doesn't block merge
+
+**Pattern 3: Auto-Fix PR**
+- Runs NeuroLint with fixes
+- Creates new commit with fixes
+- Pushes to feature branch
+
+**Database Schema:**
+```sql
+CREATE TABLE ci_integrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  platform VARCHAR(50) NOT NULL CHECK (platform IN ('github_actions', 'gitlab_ci', 'jenkins', 'circleci', 'travis', 'bitbucket')),
+  config JSONB NOT NULL,
+  webhook_url VARCHAR(500),
+  webhook_secret VARCHAR(255),
+  enabled BOOLEAN DEFAULT TRUE,
+  last_run_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE ci_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ci_integration_id UUID NOT NULL REFERENCES ci_integrations(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  
+  external_run_id VARCHAR(255),
+  commit_sha VARCHAR(40),
+  branch VARCHAR(255),
+  author VARCHAR(255),
+  
+  status VARCHAR(50) CHECK (status IN ('pending', 'running', 'success', 'failure', 'cancelled')),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  
+  files_changed INTEGER,
+  issues_found INTEGER,
+  issues_fixed INTEGER,
+  results_url VARCHAR(500),
+  
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_ci_integrations_project ON ci_integrations(project_id);
+CREATE INDEX idx_ci_runs_integration ON ci_runs(ci_integration_id);
+CREATE INDEX idx_ci_runs_commit ON ci_runs(commit_sha);
+```
+
+**GitHub Actions Template:**
+```yaml
+name: NeuroLint Code Analysis
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  neurolint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install NeuroLint
+        run: npm install -g @neurolint/cli
+      
+      - name: Run NeuroLint Analysis
+        id: neurolint
+        env:
+          NEUROLINT_API_KEY: ${{ secrets.NEUROLINT_API_KEY }}
+          NEUROLINT_PROJECT_ID: ${{ secrets.NEUROLINT_PROJECT_ID }}
+        run: |
+          # Analyze changed files only (faster)
+          neurolint analyze . \
+            --reporter=github \
+            --ci \
+            --fail-on-error \
+            --output=neurolint-report.json
+      
+      - name: Upload Analysis Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurolint-report
+          path: neurolint-report.json
+      
+      - name: Comment PR (if pull request)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('neurolint-report.json', 'utf8'));
+            
+            const body = `
+## NeuroLint Analysis Results
+
+**Files Analyzed:** ${report.filesAnalyzed}
+**Issues Found:** ${report.issuesFound}
+- 🔴 Errors: ${report.errors}
+- ⚠️ Warnings: ${report.warnings}
+- ℹ️ Info: ${report.info}
+
+**Top Issues:**
+${report.topIssues.map(i => `- ${i.rule}: ${i.count}`).join('\n')}
+
+[View Full Report](${report.reportUrl})
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+```
+
+**GitLab CI Template:**
+```yaml
+neurolint:
+  stage: test
+  image: node:18
+  
+  variables:
+    NEUROLINT_API_KEY: $NEUROLINT_API_KEY
+    NEUROLINT_PROJECT_ID: $NEUROLINT_PROJECT_ID
+  
+  before_script:
+    - npm install -g @neurolint/cli
+  
+  script:
+    - neurolint analyze . --reporter=gitlab --ci --fail-on-error
+  
+  artifacts:
+    reports:
+      codequality: neurolint-codequality.json
+    paths:
+      - neurolint-report.json
+    expire_in: 30 days
+  
+  only:
+    - merge_requests
+    - main
+```
+
+**Jenkins Pipeline Template:**
+```groovy
+pipeline {
+  agent any
+  
+  environment {
+    NEUROLINT_API_KEY = credentials('neurolint-api-key')
+    NEUROLINT_PROJECT_ID = credentials('neurolint-project-id')
+  }
+  
+  stages {
+    stage('Setup') {
+      steps {
+        sh 'npm install -g @neurolint/cli'
+      }
+    }
+    
+    stage('Analysis') {
+      steps {
+        sh '''
+          neurolint analyze . \
+            --reporter=junit \
+            --ci \
+            --output=neurolint-report.xml
+        '''
+      }
+    }
+  }
+  
+  post {
+    always {
+      junit 'neurolint-report.xml'
+      archiveArtifacts artifacts: 'neurolint-report.xml', allowEmptyArchive: true
+    }
+    failure {
+      emailext (
+        subject: "NeuroLint Analysis Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+        body: "Check console output at ${env.BUILD_URL}",
+        to: "${env.CHANGE_AUTHOR_EMAIL}"
+      )
+    }
+  }
+}
+```
+
+**CLI Enhancements for CI:**
+```typescript
+// New CLI flags for CI integration
+neurolint analyze . \
+  --ci \                           // CI mode (exit codes, no interactive prompts)
+  --fail-on-error \                // Exit with code 1 if errors found
+  --fail-on-warning \              // Exit with code 1 if warnings found
+  --reporter=github \              // Output format (github, gitlab, junit, json)
+  --baseline=baseline.json \       // Compare against baseline (fail on new issues)
+  --changed-files-only \MContinue       // Only analyze files in git diff
+--max-issues=50 \                // Fail if more than X issues
+--api-key=$NEUROLINT_API_KEY \   // Authenticate with API
+--project-id=$PROJECT_ID         // Link to SaaS project
+
+**API Endpoints:**
+```typescript
+// CI Integration Management
+POST   /api/v1/projects/:projectId/ci/setup        // Generate CI config
+GET    /api/v1/projects/:projectId/ci/templates   // List available templates
+GET    /api/v1/projects/:projectId/ci/runs        // List CI runs
+GET    /api/v1/ci/runs/:runId                     // Get run details
+
+// Webhook Receiver
+POST   /api/webhooks/ci/:platform                  // Receive CI events
+```
+
+**Implementation Requirements:**
+
+1. **CI Detection**
+   - Auto-detect CI environment variables
+   - Adapt output format based on platform
+   - Disable interactive prompts in CI mode
+   - Set appropriate exit codes
+
+2. **Baseline Comparison**
+   - Generate baseline file from main branch
+   - Compare current analysis against baseline
+   - Fail only on NEW issues (incremental adoption)
+   - Store baselines per branch
+
+3. **Changed Files Analysis**
+   - Integrate with `git diff`
+   - Support different base branches
+   - Handle renamed/moved files
+   - Skip deleted files
+
+4. **Result Reporting**
+   - JSON format for programmatic access
+   - JUnit XML for Jenkins/GitLab
+   - GitHub Checks API integration
+   - GitLab Code Quality reports
+
+5. **Performance Optimization**
+   - Cache dependencies between runs
+   - Incremental analysis (only changed files)
+   - Parallel file processing
+   - Target <5 minutes for typical PR
+
+**UI/UX Requirements:**
+
+**CI Setup Wizard:**
+1. Select platform (GitHub Actions, GitLab CI, etc.)
+2. Choose integration pattern (blocking, non-blocking, auto-fix)
+3. Configure options (fail on error, baseline mode)
+4. Copy generated YAML/config
+5. Instructions for adding secrets
+
+**CI Runs Dashboard:**
+- Table of recent CI runs
+- Status indicators (pending, success, failure)
+- Link to external CI platform
+- Commit SHA and author
+- Duration and issues found
+- Trend chart (issues over time)
+
+**Acceptance Criteria:**
+✅ Templates for 6 major CI platforms  
+✅ Copy-paste ready configurations  
+✅ Auto-detect CI environment  
+✅ Baseline comparison mode  
+✅ Changed files only analysis  
+✅ Multiple output formats (JSON, XML, GitHub, GitLab)  
+✅ Proper exit codes for CI  
+✅ Performance: <5 min for typical PR  
+✅ GitHub PR comments with results  
+✅ GitLab Code Quality integration  
+✅ CI runs tracked in dashboard  
+✅ Documentation for each platform  
+
+---
+
+### Feature 10: API Keys & Documentation
+
+**Business Requirement:**
+Provide programmatic access to NeuroLint functionality for custom integrations, scripts, and third-party tools.
+
+**Technical Specification:**
+
+**Database Schema:**
+```sql
+CREATE TABLE api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  key_prefix VARCHAR(20) NOT NULL,  -- e.g., "nlint_live_"
+  key_hash VARCHAR(255) NOT NULL,   -- bcrypt hash of full key
+  
+  scopes TEXT[] DEFAULT ARRAY['read', 'write'],
+  rate_limit_per_hour INTEGER DEFAULT 1000,
+  
+  last_used_at TIMESTAMPTZ,
+  last_used_ip INET,
+  usage_count INTEGER DEFAULT 0,
+  
+  expires_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  revoked_by UUID REFERENCES users(id),
+  revoked_reason TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE api_key_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  api_key_id UUID NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
+  
+  endpoint VARCHAR(255) NOT NULL,
+  method VARCHAR(10) NOT NULL,
+  status_code INTEGER NOT NULL,
+  duration_ms INTEGER NOT NULL,
+  ip_address INET NOT NULL,
+  user_agent TEXT,
+  
+  request_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
+CREATE INDEX idx_api_keys_hash ON api_keys(key_hash);
+CREATE INDEX idx_api_key_usage_key ON api_key_usage(api_key_id);
+CREATE INDEX idx_api_key_usage_created ON api_key_usage(created_at DESC);
+```
+
+**API Key Format:**
+nlint_live_abcdef1234567890abcdef1234567890  (Production)
+nlint_test_abcdef1234567890abcdef1234567890  (Testing)
+Prefix: nlint_live_ or nlint_test_
+Body: 32 hexadecimal characters
+Total length: 43 characters
+
+**Key Generation Logic:**
+```typescript
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
+
+async function generateAPIKey(organizationId: string, name: string, isTest: boolean = false): Promise<{ key: string, keyId: string }> {
+  const prefix = isTest ? 'nlint_test_' : 'nlint_live_';
+  const randomBytes = crypto.randomBytes(24); // 24 bytes = 48 hex chars
+  const keyBody = randomBytes.toString('hex').substring(0, 32);
+  const fullKey = `${prefix}${keyBody}`;
+  
+  // Hash for storage (never store plain key)
+  const keyHash = await bcrypt.hash(fullKey, 12);
+  
+  // Store in database
+  const apiKey = await db.apiKeys.create({
+    id: crypto.randomUUID(),
+    organization_id: organizationId,
+    key_prefix: prefix,
+    key_hash: keyHash,
+    name,
+    ...
+  });
+  
+  return {
+    key: fullKey,      // Show ONCE to user
+    keyId: apiKey.id
+  };
+}
+
+// Verification
+async function verifyAPIKey(providedKey: string): Promise<APIKey | null> {
+  const prefix = providedKey.substring(0, 11); // "nlint_live_"
+  
+  const apiKey = await db.apiKeys.findOne({
+    where: {
+      key_prefix: prefix,
+      revoked_at: null,
+      expires_at: { [Op.or]: [null, { [Op.gt]: new Date() }] }
+    }
+  });
+  
+  if (!apiKey) return null;
+  
+  const isValid = await bcrypt.compare(providedKey, apiKey.key_hash);
+  if (!isValid) return null;
+  
+  // Update last used
+  await apiKey.update({
+    last_used_at: new Date(),
+    usage_count: apiKey.usage_count + 1
+  });
+  
+  return apiKey;
+}
+```
+
+**API Authentication Middleware:**
+```typescript
+async function authenticateAPIKey(req, res, next) {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+  }
+  
+  const apiKey = authHeader.substring(7); // Remove "Bearer "
+  
+  // Check rate limit first (before verifying key)
+  const rateLimitKey = `rate_limit:${apiKey.substring(0, 16)}`;
+  const requests = await redis.incr(rateLimitKey);
+  if (requests === 1) {
+    await redis.expire(rateLimitKey, 3600); // 1 hour window
+  }
+  
+  const keyData = await verifyAPIKey(apiKey);
+  if (!keyData) {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  if (requests > keyData.rate_limit_per_hour) {
+    return res.status(429).json({
+      error: 'Rate limit exceeded',
+      limit: keyData.rate_limit_per_hour,
+      reset_at: new Date(Date.now() + 3600000).toISOString()
+    });
+  }
+  
+  // Check scopes
+  const requiredScope = getRequiredScope(req.method, req.path);
+  if (!keyData.scopes.includes(requiredScope) && !keyData.scopes.includes('*')) {
+    return res.status(403).json({
+      error: 'Insufficient permissions',
+      required_scope: requiredScope,
+      available_scopes: keyData.scopes
+    });
+  }
+  
+  // Log usage
+  await db.apiKeyUsage.create({
+    api_key_id: keyData.id,
+    endpoint: req.path,
+    method: req.method,
+    status_code: res.statusCode,
+    duration_ms: Date.now() - req.startTime,
+    ip_address: req.ip,
+    user_agent: req.headers['user-agent']
+  });
+  
+  req.apiKey = keyData;
+  req.organizationId = keyData.organization_id;
+  next();
+}
+```
+
+**Scope System:**
+- `read` - GET requests only
+- `write` - POST/PATCH/DELETE requests
+- `analyze` - Trigger analysis
+- `admin` - Full access (dangerous)
+- `*` - All scopes (for testing only)
+
+**API Endpoints:**
+```typescript
+// API Key Management
+POST   /api/v1/organizations/:orgId/api-keys        // Create API key
+GET    /api/v1/organizations/:orgId/api-keys        // List API keys
+GET    /api/v1/organizations/:orgId/api-keys/:id    // Get key details (not the actual key)
+PATCH  /api/v1/organizations/:orgId/api-keys/:id    // Update key (name, scopes, rate limit)
+DELETE /api/v1/organizations/:orgId/api-keys/:id    // Revoke key
+
+// API Key Usage
+GET    /api/v1/organizations/:orgId/api-keys/:id/usage  // Get usage stats
+```
+
+**OpenAPI 3.0 Specification:**
+
+Create comprehensive API documentation at `/api/docs` using OpenAPI spec:
+```yaml
+openapi: 3.0.3
+info:
+  title: NeuroLint API
+  version: 1.0.0
+  description: |
+    Programmatic access to NeuroLint code analysis and fixing capabilities.
+    
+    ## Authentication
+    All requests require an API key in the Authorization header:
+```
+    Authorization: Bearer nlint_live_your_key_here
+## Rate Limiting
+- Free tier: 100 requests/hour
+- Pro tier: 1,000 requests/hour
+- Enterprise: Custom limits
+
+Rate limit headers included in every response:
+- X-RateLimit-Limit
+- X-RateLimit-Remaining
+- X-RateLimit-Reset
+contact:
+email: api@neurolint.dev
+servers:
+
+url: https://api.neurolint.dev/v1
+description: Production
+url: https://api-staging.neurolint.dev/v1
+description: Staging
+
+security:
+
+BearerAuth: []
+
+paths:
+/projects:
+get:
+summary: List projects
+tags: [Projects]
+responses:
+'200':
+description: List of projects
+content:
+application/json:
+schema:
+type: object
+properties:
+data:
+type: array
+items:
+$ref: '#/components/schemas/Project'
+pagination:
+$ref: '#/components/schemas/Pagination'
+post:
+  summary: Create project
+  tags: [Projects]
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [name]
+          properties:
+            name:
+              type: string
+              example: "My React App"
+            repository_url:
+              type: string
+              example: "https://github.com/user/repo"
+  responses:
+    '201':
+      description: Project created
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Project'
+/projects/{projectId}/analyze:
+post:
+summary: Trigger analysis
+tags: [Analysis]
+parameters:
+- name: projectId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+requestBody:
+content:
+application/json:
+schema:
+type: object
+properties:
+branch:
+type: string
+default: "main"
+rules:
+type: array
+items:
+type: string
+responses:
+'202':
+description: Analysis started
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AnalysisRun'
+components:
+securitySchemes:
+BearerAuth:
+type: http
+scheme: bearer
+bearerFormat: API Key
+schemas:
+Project:
+type: object
+properties:
+id:
+type: string
+format: uuid
+name:
+type: string
+slug:
+type: string
+repository_url:
+type: string
+created_at:
+type: string
+format: date-time
+AnalysisRun:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    project_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [pending, running, completed, failed]
+    files_analyzed:
+      type: integer
+    issues_found:
+      type: integer
+    started_at:
+      type: string
+      format: date-time
+
+Pagination:
+  type: object
+  properties:
+    total:
+      type: integer
+    page:
+      type: integer
+    per_page:
+      type: integer
+    pages:
+      type: integer
+
+**Implementation Requirements:**
+
+1. **Interactive API Documentation**
+   - Use Swagger UI or ReDoc
+   - "Try it out" feature with real API
+   - Code examples in multiple languages (curl, Python, Node.js, Go)
+   - Downloadable OpenAPI spec
+
+2. **SDKs/Client Libraries** (Optional but High Value)
+```typescript
+// Official Node.js SDK
+import { NeuroLintClient } from '@neurolint/sdk';
+
+const client = new NeuroLintClient({
+  apiKey: process.env.NEUROLINT_API_KEY
+});
+
+// Trigger analysis
+const run = await client.projects.analyze('project-id', {
+  branch: 'feature/new-ui',
+  rules: ['security', 'accessibility']
+});
+
+// Wait for completion
+const result = await run.wait();
+console.log(`Found ${result.issues_found} issues`);
+```
+
+3. **Webhooks** (Optional but Very Valuable)
+   - Allow users to register webhook URLs
+   - Send events: analysis.completed, analysis.failed, issue.detected
+   - Include HMAC signature for verification
+   - Retry logic (3 attempts with exponential backoff)
+
+4. **API Versioning Strategy**
+   - URL-based versioning (/v1/, /v2/)
+   - Maintain v1 for minimum 1 year after v2 release
+   - Deprecation warnings in response headers
+   - Clear migration guides
+
+5. **Error Handling Standards**
+```json
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "You have exceeded your API rate limit",
+    "details": {
+      "limit": 1000,
+      "reset_at": "2025-12-07T15:00:00Z"
+    },
+    "request_id": "req_abc123",
+    "documentation_url": "https://docs.neurolint.dev/errors/rate-limit"
+  }
+}
+```
+
+**UI/UX Requirements:**
+
+**API Keys Page:**
+- "Create New API Key" button
+- Table of existing keys (showing last 4 chars only)
+- Usage statistics per key
+- Revoke button with confirmation
+- Copy key button (shows once on creation)
+- Regenerate key option
+
+**API Key Creation Modal:**
+- Name input (required)
+- Description textarea
+- Scope checkboxes
+- Rate limit selector
+- Expiration date picker (optional)
+- Test/Live environment toggle
+- One-time key display with copy button
+
+**API Documentation:**
+- Sidebar navigation
+- Search functionality
+- Code examples for each endpoint
+- Try it out feature
+- Rate limit information
+- Authentication guide
+- Quickstart tutorial
+
+**Acceptance Criteria:**
+✅ Generate secure API keys (cryptographically random)  
+✅ Store only hashed keys (bcrypt)  
+✅ Show full key only once on creation  
+✅ Rate limiting per key (configurable)  
+✅ Scope-based permissions  
+✅ API key expiration support  
+✅ Revocation with reason logging  
+✅ Usage tracking and analytics  
+✅ OpenAPI 3.0 specification  
+✅ Interactive API documentation  
+✅ Code examples in 3+ languages  
+✅ Proper error responses with codes  
+✅ Rate limit headers in responses  
+✅ Request ID for debugging  
+✅ Performance: <100ms for key verification  
+
+---
+
+## 🎯 Phase 5: Polish & Launch Prep (Weeks 9-10)
+
+### Final Touches
+
+**1. Onboarding Flow**
+- Welcome screen for new users
+- Interactive product tour
+- Sample project with pre-populated data
+- "Quick Wins" checklist
+- Help tooltips throughout app
+
+**2. Documentation**
+- Getting started guide
+- Video tutorials (3-5 minutes each)
+- API reference (auto-generated from OpenAPI)
+- Migration guides (competitor products)
+- FAQ page
+- Troubleshooting guide
+
+**3. Legal Pages**
+- Terms of Service
+- Privacy Policy
+- Cookie Policy
+- Acceptable Use Policy
+- SLA (Service Level Agreement) for enterprise
+
+**4. Marketing Pages**
+- Homepage redesign
+- Pricing page (even if free for now)
+- Customer logos/testimonials
+- Case studies (3-5)
+- Comparison pages (vs competitors)
+- Trust indicators (security badges, uptime)
+
+**5. Performance Optimization**
+- Frontend bundle size <200KB
+- API response time <200ms (p95)
+- Database query optimization
+- CDN for static assets
+- Image optimization
+- Lazy loading
+
+**6. SEO Optimization**
+- Meta tags on all pages
+- Open Graph images
+- Sitemap.xml
+- robots.txt
+- Schema.org markup
+- Blog setup (optional but recommended)
+
+**7. Email System**
+- Welcome email
+- Invitation emails
+- Analysis complete notifications
+- Weekly digest (optional)
+- Transactional email templates
+
+**8. Monitoring & Alerts**
+- Error tracking (Sentry)
+- Uptime monitoring (UptimeRobot)
+- Performance monitoring (Vercel Analytics)
+- Custom alerts (Slack/email)
+- Log aggregation
+
+---
+
+## 📊 Testing & Quality Assurance
+
+**Unit Tests:**
+- Target: 80%+ code coverage
+- All business logic covered
+- Edge cases tested
+- Mock external dependencies
+
+**Integration Tests:**
+- API endpoint tests
+- Database interactions
+- Third-party integrations (GitHub OAuth)
+- Payment processing (if applicable)
+
+**End-to-End Tests:**
+- Critical user flows
+- Authentication flows
+- Analysis workflow
+- Team management
+
+**Security Testing:**
+- Penetration testing (third-party)
+- SQL injection attempts
+- XSS testing
+- CSRF protection verification
+- API key security audit
+
+**Performance Testing:**
+- Load testing (1000+ concurrent users)
+- Stress testing (find breaking point)
+- Endurance testing (24-hour stability)
+- Database query performance
+
+**Browser/Device Testing:**
+- Chrome, Firefox, Safari, Edge
+- Desktop and mobile responsive
+- Different screen sizes
+- Accessibility testing (WCAG 2.1 AA)
+
+---
+
+## 🚀 Launch Checklist
+
+**Pre-Launch (Week 9):**
+- [ ] All 10 enterprise features implemented
+- [ ] Unit tests passing (80%+ coverage)
+- [ ] Integration tests passing
+- [ ] E2E tests for critical flows
+- [ ] Security audit completed
+- [ ] Performance benchmarks met
+- [ ] Documentation complete
+- [ ] Legal pages published
+- [ ] Pricing page live
+- [ ] Marketing site updated
+
+**Launch Day (Week 10):**
+- [ ] Final database backup
+- [ ] Monitoring dashboards set up
+- [ ] Support email/chat ready
+- [ ] Social media posts scheduled
+- [ ] Product Hunt launch (optional)
+- [ ] Email announcement to waitlist
+- [ ] Press release (if applicable)
+- [ ] Launch blog post
+
+**Post-Launch (Week 11+):**
+- [ ] Monitor error rates
+- [ ] Collect user feedback
+- [ ] Fix critical bugs within 24h
+- [ ] Weekly usage reports
+- [ ] Customer success check-ins
+
+---
+
+## 💰 Estimated Valuation Impact
+
+**Current State (CLI Only):**
+- Valuation: $50k-$150k
+
+**After Enterprise Features:**
+- Valuation: $250k-$1.2M
+
+**Valuation Multipliers:**
+- ✅ Team Workspaces: +$50k
+- ✅ GitHub Integration: +$100k
+- ✅ Audit Logs: +$30k
+- ✅ RBAC: +$40k
+- ✅ Analytics Dashboard: +$80k
+- ✅ CI/CD Integration: +$60k
+- ✅ API + Documentation: +$90k
+- ✅ Security/Compliance Page: +$50k
+- ✅ 100+ GitHub Stars: +$20k
+- ✅ 10K+ npm downloads: +$30k
+- ✅ Customer testimonials: +$40k
+- ✅ Case studies: +$30k
+
+**Total Estimated Valuation: $620k-$1.2M**
+
+---
+
+## ⚠️ Production-Ready Standards
+
+Every feature MUST meet these standards:
+
+**Code Quality:**
+- TypeScript strict mode
+- ESLint rules enforced
+- Prettier formatting
+- No console.log in production
+- Proper error boundaries
+
+**Security:**
+- Input validation on all endpoints
+- SQL injection prevention
+- XSS protection
+- CSRF tokens
+- Rate limiting
+- Secure headers
+
+**Performance:**
+- API responses <200ms (p95)
+- Page load <3 seconds
+- Database queries optimized
+- Proper indexing
+- Caching strategy
+
+**Reliability:**
+- Graceful error handling
+- Retry logic for external APIs
+- Database transactions
+- Data validation
+- Backup strategy
+
+**Observability:**
+- Structured logging
+- Error tracking
+- Performance monitoring
+- User analytics
+- Audit trails
+
+---
+
+## 📝 Documentation Standards
+
+Every feature requires:
+
+1. **Technical Spec** (internal)
+   - Architecture decisions
+   - Database schema
+   - API contracts
+   - Security considerations
+
+2. **User Documentation** (external)
+   - Feature overview
+   - Step-by-step guide
+   - Screenshots/videos
+   - Common issues
+
+3. **API Documentation**
+   - Endpoint descriptions
+   - Request/response examples
+   - Error codes
+   - Rate limits
+
+4. **Code Documentation**
+   - JSDoc comments
+   - README per module
+   - Architecture diagrams
+   - Setup instructions
+
+---
+
+## 🎯 Success Metrics
+
+Track these metrics weekly:
+
+**Adoption:**
+- New organizations created
+- Active users (DAU/WAU/MAU)
+- Project creations
+- Analyses run
+
+**Engagement:**
+- Average analyses per user
+- Feature usage breakdown
+- Session duration
+- Return rate
+
+**Quality:**
+- Error rate <0.1%
+- API response time <200ms
+- Uptime >99.9%
+- Customer satisfaction score
+
+**Business:**
+- Trial to paid conversion (if applicable)
+- Customer acquisition cost
+- Lifetime value
+- Churn rate
+
+---
+
+## 🤝 Support Plan
+
+**Support Channels:**
+- Email: support@neurolint.dev
+- Docs: docs.neurolint.dev
+- GitHub Issues (for bugs)
+- Community Discord/Slack (optional)
+
+**Response Times:**
+- Critical: <1 hour
+- High: <4 hours
+- Medium: <24 hours
+- Low: <3 days
+
+**Escalation Path:**
+1. Support tier 1 (community/docs)
+2. Support tier 2 (email)
+3. Engineering team (critical issues)
+
+---
+
+## 📅 Timeline Summary
+
+| Week | Phase | Key Deliverables |
+|------|-------|------------------|
+| 1-2 | Phase 1 | Teams, Projects, GitHub OAuth |
+| 3-4 | Phase 2 | Audit Logs, Security Page |
+| 5-6 | Phase 3 | RBAC, Rules Dashboard |
+| 7-8 | Phase 4 | Analytics, CI/CD, API |
+| 9 | Phase 5 | Polish, Docs, Testing |
+| 10 | Launch | Deploy, Announce, Monitor |
+
+**Total: 10 weeks from start to acquisition-ready SaaS**
+
+---
+
+## 💡 Final Notes
+
+**Quality Over Speed:**
+- Don't rush features
+- Test thoroughly
+- Get feedback early
+- Iterate based on real usage
+
+**Start Simple, Scale Later:**
+- MVP for each feature first
+- Add complexity based on demand
+- Don't over-engineer
+
+**Document Everything:**
+- Future you will thank present you
+- Makes acquisition easier
+- Shows professionalism
+
+**Stay Focused:**
+- Don't add features outside this plan
+- Polish what you have
+- Ship on schedule
+
+---
+
+**This roadmap gets you from current state to $250k-$1.2M valuation in 10 weeks.**
+
+Ready to start? Let me know which feature you want to tackle first, or if you need me to create:
+- Detailed wireframes for any feature
+- Database migration scripts
+- Boilerplate code templates
+- Testing strategy
+- Deployment checklist
+
+Let's build this! 🚀

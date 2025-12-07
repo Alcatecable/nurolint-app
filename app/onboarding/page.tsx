@@ -831,6 +831,10 @@ export default function OnboardingPage() {
   ];
 
   const currentStepData = steps[currentStep];
+  
+  if (!currentStepData) {
+    return null;
+  }
 
   const nextStep = () => {
     if (currentStep < steps.length - 1) {

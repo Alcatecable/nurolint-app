@@ -62,7 +62,7 @@ function CheckoutContent() {
       yearlyPrice: 278,
       monthlyFixes: -1, // Unlimited
       features: [
-        "All 7 layers (adds Next.js, Testing, Adaptive Learning)",
+        "All 8 layers (adds Next.js, Testing, Adaptive Learning, Security)",
         "Unlimited fixes",
         "Unlimited dry runs",
         "API access & CI/CD integration",
@@ -76,7 +76,7 @@ function CheckoutContent() {
       yearlyPrice: 758,
       monthlyFixes: -1, // Unlimited
       features: [
-        "All 7 layers with advanced features",
+        "All 8 layers with advanced features",
         "Unlimited fixes",
         "Advanced analytics",
         "Custom integrations",
@@ -90,7 +90,7 @@ function CheckoutContent() {
       yearlyPrice: 0, // Custom pricing
       monthlyFixes: -1, // Unlimited
       features: [
-        "All 7 layers with custom rules",
+        "All 8 layers with custom rules",
         "Unlimited fixes",
         "Custom rules engine",
         "SLA guarantees",

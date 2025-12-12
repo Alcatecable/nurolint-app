@@ -173,7 +173,7 @@ export default function WelcomeBanner({ userName }: WelcomeBannerProps) {
             <div style={{
               fontSize: "0.8rem",
               color: "rgba(255, 255, 255, 0.7)"
-                        }}>6 layers of intelligent code modernization</div>
+                        }}>8 layers of intelligent code modernization</div>
           </div>
 
           <div style={{

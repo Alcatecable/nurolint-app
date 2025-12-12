@@ -13,13 +13,14 @@ interface MigrationConfiguratorProps {
 }
 
 const layerDescriptions: Record<number, { name: string; description: string }> = {
-  1: { name: "Missing Keys", description: "React list key props" },
-  2: { name: "HTML Entities", description: "Unicode encoding fixes" },
-  3: { name: "SSR/Hydration", description: "Server-client mismatches" },
-  4: { name: "Accessibility", description: "ARIA and semantic HTML" },
-  5: { name: "Console Usage", description: "Production logging" },
-  6: { name: "Error Handling", description: "Try-catch blocks" },
-  7: { name: "Performance", description: "React optimizations" },
+  1: { name: "Configuration", description: "TypeScript strict flags, React 19 JSX" },
+  2: { name: "Patterns", description: "Console removal, React 19 patterns" },
+  3: { name: "Components", description: "React keys AUTO-FIX, accessibility" },
+  4: { name: "Hydration & SSR", description: "AST-based browser API fixes" },
+  5: { name: "Next.js Migration", description: "ReactDOM.render → createRoot" },
+  6: { name: "Testing", description: "RSC testing, MSW compatibility" },
+  7: { name: "Adaptive Learning", description: "Cross-layer pattern learning" },
+  8: { name: "Security Forensics", description: "IoC signatures, CVE detection" },
 };
 
 export default function MigrationConfigurator({
@@ -142,9 +143,9 @@ export default function MigrationConfigurator({
               Auto-Detect
             </button>
             <button
-              className={`control-btn ${selectedLayers.length === 7 ? "active" : ""}`}
-              onClick={() => onLayersChange([1, 2, 3, 4, 5, 6, 7])}
-              aria-pressed={selectedLayers.length === 7}
+              className={`control-btn ${selectedLayers.length === 8 ? "active" : ""}`}
+              onClick={() => onLayersChange([1, 2, 3, 4, 5, 6, 7, 8])}
+              aria-pressed={selectedLayers.length === 8}
               aria-describedby="all-layers-description"
             >
               All Layers
@@ -154,7 +155,7 @@ export default function MigrationConfigurator({
             Let NeuroLint automatically select appropriate layers
           </div>
           <div id="all-layers-description" className="sr-only">
-            Run all 7 layers of analysis and fixes
+            Run all 8 layers of analysis and fixes
           </div>
           <div
             className="layer-checkboxes"
@@ -164,7 +165,7 @@ export default function MigrationConfigurator({
             <span id="individual-layers" className="sr-only">
               Individual layer selection
             </span>
-            {[1, 2, 3, 4, 5, 6, 7].map((layerId) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((layerId) => (
               <label key={layerId} className="layer-checkbox">
                 <input
                   type="checkbox"

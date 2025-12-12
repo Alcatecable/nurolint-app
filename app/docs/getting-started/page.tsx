@@ -72,7 +72,7 @@ export default function GettingStartedPage() {
           <div className="layer-header-content">
             <div className="layer-badge">Getting Started</div>
             <h1>Getting Started with NeuroLint</h1>
-            <p>Transform your React/Next.js codebase in minutes with our 7-layer modernization engine</p>
+            <p>Transform your React/Next.js codebase in minutes with our 8-layer modernization engine</p>
           </div>
         </div>
 
@@ -206,8 +206,8 @@ export default function GettingStartedPage() {
           </div>
 
           <div className="layer-section">
-            <h2>Understanding the 7-Layer System</h2>
-            <p>NeuroLint uses a sophisticated 7-layer approach to ensure safe, incremental modernization:</p>
+            <h2>Understanding the 8-Layer System</h2>
+            <p>NeuroLint uses a sophisticated 8-layer approach to ensure safe, incremental modernization:</p>
             
             <div className="layers-overview">
               <div className="layer-item">
@@ -237,32 +237,40 @@ export default function GettingStartedPage() {
               <div className="layer-item">
                 <div className="layer-number">4</div>
                 <div className="layer-info">
-                  <h4>Hydration</h4>
-                  <p>SSR-safety and hydration protection</p>
+                  <h4>Hydration & SSR</h4>
+                  <p>AST-based auto-fix for browser APIs</p>
                 </div>
               </div>
               
               <div className="layer-item">
                 <div className="layer-number">5</div>
                 <div className="layer-info">
-                  <h4>Next.js</h4>
-                  <p>App Router directives and structure</p>
+                  <h4>Next.js & React 19 Migration</h4>
+                  <p>ReactDOM.render to createRoot, deprecations</p>
                 </div>
               </div>
               
               <div className="layer-item">
                 <div className="layer-number">6</div>
                 <div className="layer-info">
-                  <h4>Testing</h4>
-                  <p>Quality and testing enhancements</p>
+                  <h4>Testing Infrastructure</h4>
+                  <p>RSC testing, MSW compatibility</p>
                 </div>
               </div>
               
               <div className="layer-item">
                 <div className="layer-number">7</div>
                 <div className="layer-info">
-                  <h4>Adaptive</h4>
-                  <p>Adaptive pattern learning</p>
+                  <h4>Adaptive Pattern Learning</h4>
+                  <p>Cross-layer learning, confidence scoring</p>
+                </div>
+              </div>
+              
+              <div className="layer-item">
+                <div className="layer-number">8</div>
+                <div className="layer-info">
+                  <h4>Security Forensics</h4>
+                  <p>IoC signatures, CVE detection</p>
                 </div>
               </div>
             </div>

@@ -85,7 +85,7 @@ export const POST = createOptionalAuthHandler(
 export async function GET() {
   return NextResponse.json({
     command: "validate",
-    description: "Validate files without applying fixes - checks for issues across all 7 layers",
+    description: "Validate files without applying fixes - checks for issues across all 8 layers",
     method: "POST",
     authentication: "Optional (anonymous validation allowed with rate limits)",
     parameters: {

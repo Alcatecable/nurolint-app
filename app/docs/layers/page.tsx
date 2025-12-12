@@ -8,7 +8,7 @@ export default function LayersOverviewPage() {
       <div className="page-header">
         <h1>Layers Overview</h1>
         <p className="page-description">
-          NeuroLint's 7-layer modernization system systematically transforms React/Next.js codebases. 
+          NeuroLint's 8-layer modernization system systematically transforms React/Next.js codebases. 
           Each layer targets specific issues and can be run independently or as part of a complete modernization workflow.
         </p>
       </div>
@@ -42,7 +42,7 @@ export default function LayersOverviewPage() {
 
       <section className="quick-actions-section">
         <div className="section-header">
-          <h3>The 7 Modernization Layers</h3>
+          <h3>The 8 Modernization Layers</h3>
           <p>Click on any layer to view detailed documentation and examples.</p>
         </div>
         

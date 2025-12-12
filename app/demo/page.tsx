@@ -195,7 +195,7 @@ export default function DemoPage() {
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
             Experience automated React/Next.js code modernization in real-time. 
-            No signup required - analyze your code instantly with our 6-layer transformation system.
+            No signup required - analyze your code instantly with our 8-layer transformation system.
           </p>
         </div>
 
@@ -361,7 +361,7 @@ export default function DemoPage() {
               Ready to modernize your entire codebase?
             </h2>
             <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Get unlimited access to all 6 layers, team collaboration, CI/CD integration, 
+              Get unlimited access to all 8 layers, team collaboration, CI/CD integration, 
               and advanced analytics. Start with 50 free fixes, no credit card required.
             </p>
             <div className="flex justify-center space-x-4">

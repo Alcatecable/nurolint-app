@@ -80,7 +80,7 @@ const COMMANDS = [
   {
     id: "simplify",
     name: "Simplify Code",
-    description: "Run all 7 layers to modernize and simplify code",
+    description: "Run all 8 layers to modernize and simplify code",
     category: "utility",
     endpoint: "/api/commands/simplify",
     inputType: "code",

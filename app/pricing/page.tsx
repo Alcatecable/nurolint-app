@@ -60,13 +60,13 @@ export default function PricingPage() {
       name: "Professional",
       monthlyPrice: 29,
       yearlyPrice: 278, // 20% discount
-      description: "Full modernization for production teams with all 7 layers.",
-      layers: [1, 2, 3, 4, 5, 6, 7],
+      description: "Full modernization for production teams with all 8 layers.",
+      layers: [1, 2, 3, 4, 5, 6, 7, 8],
       monthlyFixes: -1, // Unlimited
       popular: true,
       features: [
         "Unlimited scans & dry runs",
-        "Unlimited fixes for all 7 layers",
+        "Unlimited fixes for all 8 layers",
         "Configuration modernization",
         "Content standardization",
         "Component intelligence", 
@@ -94,11 +94,11 @@ export default function PricingPage() {
       monthlyPrice: 79,
       yearlyPrice: 758, // 20% discount
       description: "Enterprise-grade modernization with advanced features and support.",
-      layers: [1, 2, 3, 4, 5, 6, 7],
+      layers: [1, 2, 3, 4, 5, 6, 7, 8],
       monthlyFixes: -1, // Unlimited
       features: [
         "Unlimited scans & dry runs",
-        "Unlimited fixes for all 7 layers",
+        "Unlimited fixes for all 8 layers",
         "All Professional features",
         "Advanced analytics",
         "Custom integrations",
@@ -118,12 +118,12 @@ export default function PricingPage() {
       monthlyPrice: 0, // Custom pricing
       yearlyPrice: 0, // Custom pricing
       description: "Complete modernization with custom rules and priority support.",
-      layers: [1, 2, 3, 4, 5, 6, 7],
+      layers: [1, 2, 3, 4, 5, 6, 7, 8],
       monthlyFixes: -1, // Unlimited
       enterprise: true,
       features: [
         "Unlimited scans & dry runs",
-        "Unlimited fixes for all 7 layers",
+        "Unlimited fixes for all 8 layers",
         "All Business features",
         "Custom rules engine",
         "Priority support (email + phone)",
@@ -344,7 +344,7 @@ export default function PricingPage() {
                 }}
               >
                 Automated React/Next.js modernization, legacy code upgrades, and
-                migration safety—powered by NeuroLint's 6-layer system. Scan individual files via extensions/CLI or entire GitHub repositories through our dashboard. Start free and upgrade for full modernization power.
+                migration safety—powered by NeuroLint's 8-layer system. Scan individual files via extensions/CLI or entire GitHub repositories through our dashboard. Start free and upgrade for full modernization power.
               </p>
 
               {/* Billing Toggle */}

@@ -83,7 +83,7 @@ export default function FAQPage() {
             
             <div className="faq-item">
               <h3>What is NeuroLint?</h3>
-              <p>NeuroLint is an intelligent code modernization tool that automatically transforms React/Next.js codebases using a 7-layer approach. It updates configurations, modernizes components, applies best practices, and ensures your code follows the latest standards.</p>
+              <p>NeuroLint is an intelligent code modernization tool that automatically transforms React/Next.js codebases using an 8-layer approach. It updates configurations, modernizes components, applies best practices, and ensures your code follows the latest standards.</p>
             </div>
             
             <div className="faq-item">
@@ -92,8 +92,8 @@ export default function FAQPage() {
             </div>
             
             <div className="faq-item">
-              <h3>What are the 7 layers?</h3>
-              <p>The 7 layers are: 1) Configuration (TypeScript, Next.js), 2) Patterns (code patterns), 3) Components (React components), 4) Hooks (state management), 5) Performance (optimizations), 6) Testing (test coverage), and 7) Deployment (CI/CD).</p>
+              <h3>What are the 8 layers?</h3>
+              <p>The 8 layers are: 1) Configuration, 2) Patterns, 3) Components, 4) Hydration & SSR, 5) Next.js & React 19 Migration, 6) Testing Infrastructure, 7) Adaptive Pattern Learning, and 8) Security Forensics.</p>
             </div>
             
             <div className="faq-item">
@@ -141,7 +141,7 @@ export default function FAQPage() {
             
             <div className="faq-item">
               <h3>Can I apply only specific layers?</h3>
-              <p>Yes! Use the <code>--layers</code> flag: <code>neurolint fix src/ --layers 1,2,3</code>. This applies only the specified layers (1-7).</p>
+              <p>Yes! Use the <code>--layers</code> flag: <code>neurolint fix src/ --layers 1,2,3</code>. This applies only the specified layers (1-8).</p>
             </div>
             
             <div className="faq-item">
@@ -247,7 +247,7 @@ export default function FAQPage() {
             
             <div className="faq-item">
               <h3>What do I get with the premium plan?</h3>
-              <p>Premium includes all layers (1-7), advanced rules, team collaboration, priority support, CI/CD integration, and advanced reporting features.</p>
+              <p>Premium includes all layers (1-8), advanced rules, team collaboration, priority support, CI/CD integration, and advanced reporting features.</p>
             </div>
             
             <div className="faq-item">

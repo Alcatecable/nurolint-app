@@ -86,7 +86,7 @@ export default function ConfigurationPage() {
               <h3>Basic Configuration</h3>
                              <div className="code-block enhanced-code-block">
                  <pre>{`{
-  "enabledLayers": [1, 2, 3, 4, 5, 6, 7],
+  "enabledLayers": [1, 2, 3, 4, 5, 6, 7, 8],
   "include": ["**/*.{ts,tsx,js,jsx,json}"],
   "exclude": ["**/node_modules/**", "**/dist/**", "**/.next/**"],
   "verbose": false,
@@ -103,10 +103,10 @@ export default function ConfigurationPage() {
             <div className="config-options-grid">
               <div className="config-option">
                 <h3>enabledLayers</h3>
-                <p>Array of layer numbers to enable (1-7)</p>
+                <p>Array of layer numbers to enable (1-8)</p>
                 <div className="option-example">
                   <span className="option-label">Example:</span>
-                  <code>[1, 2, 3, 4, 5, 6, 7]</code>
+                  <code>[1, 2, 3, 4, 5, 6, 7, 8]</code>
                 </div>
               </div>
               
@@ -173,7 +173,7 @@ export default function ConfigurationPage() {
               <p>Configure specific behavior for individual layers:</p>
               <div className="code-block enhanced-code-block">
                 <pre>{`{
-  "enabledLayers": [1, 2, 3, 4, 5, 6, 7],
+  "enabledLayers": [1, 2, 3, 4, 5, 6, 7, 8],
   "layerSettings": {
     "layer1": {
       "typescriptTarget": "ES2020",

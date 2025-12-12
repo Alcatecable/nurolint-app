@@ -170,7 +170,7 @@ export default function CLIPage() {
               <div className="code-block enhanced-code-block">
                 <code>neurolint analyze &lt;path&gt; --layers 1,2,3</code>
               </div>
-              <p>Analyze only specific layers (1-7)</p>
+              <p>Analyze only specific layers (1-8)</p>
             </div>
           </div>
 
@@ -241,35 +241,43 @@ export default function CLIPage() {
               </div>
               
               <div className="layer-command">
-                <h3>Layer 4: Hooks</h3>
+                <h3>Layer 4: Hydration & SSR</h3>
                 <div className="code-block enhanced-code-block">
                   <code>neurolint layer4 &lt;path&gt; [options]</code>
                 </div>
-                <p>Optimize custom hooks and state management</p>
+                <p>AST-based auto-fix for browser APIs and hydration issues</p>
               </div>
               
               <div className="layer-command">
-                <h3>Layer 5: Performance</h3>
+                <h3>Layer 5: Next.js & React 19 Migration</h3>
                 <div className="code-block enhanced-code-block">
                   <code>neurolint layer5 &lt;path&gt; [options]</code>
                 </div>
-                <p>Apply performance optimizations</p>
+                <p>ReactDOM.render to createRoot, deprecation patterns</p>
               </div>
               
               <div className="layer-command">
-                <h3>Layer 6: Testing</h3>
+                <h3>Layer 6: Testing Infrastructure</h3>
                 <div className="code-block enhanced-code-block">
                   <code>neurolint layer6 &lt;path&gt; [options]</code>
                 </div>
-                <p>Update testing patterns and coverage</p>
+                <p>RSC testing guidance, MSW compatibility, test scaffolding</p>
               </div>
               
               <div className="layer-command">
-                <h3>Layer 7: Deployment</h3>
+                <h3>Layer 7: Adaptive Pattern Learning</h3>
                 <div className="code-block enhanced-code-block">
                   <code>neurolint layer7 &lt;path&gt; [options]</code>
                 </div>
-                <p>Optimize CI/CD and deployment configurations</p>
+                <p>Cross-layer learning and confidence scoring</p>
+              </div>
+              
+              <div className="layer-command">
+                <h3>Layer 8: Security Forensics</h3>
+                <div className="code-block enhanced-code-block">
+                  <code>neurolint layer8 &lt;path&gt; [options]</code>
+                </div>
+                <p>80 IoC signatures, React 19 security patterns, CVE detection</p>
               </div>
             </div>
           </div>

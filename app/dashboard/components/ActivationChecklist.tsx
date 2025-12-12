@@ -133,7 +133,7 @@ export default function ActivationChecklist({
     {
       id: "explore-layers",
       title: "Explore layer documentation",
-      description: "Learn what each of the 7 layers does",
+      description: "Learn what each of the 8 layers does",
       completed: progress["explore-layers"],
       actionLabel: "View docs",
       action: handleViewDocs

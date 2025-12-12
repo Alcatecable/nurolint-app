@@ -1557,14 +1557,14 @@ export default function Dashboard() {
                       Auto-Detect
                     </button>
                     <button
-                      className={`control-btn ${dashboardState.selectedLayers.length === 7 ? "active" : ""}`}
+                      className={`control-btn ${dashboardState.selectedLayers.length === 8 ? "active" : ""}`}
                       onClick={() =>
                         setDashboardState((prev) => ({
                           ...prev,
-                          selectedLayers: [1, 2, 3, 4, 5, 6, 7],
+                          selectedLayers: [1, 2, 3, 4, 5, 6, 7, 8],
                         }))
                       }
-                      aria-pressed={dashboardState.selectedLayers.length === 7}
+                      aria-pressed={dashboardState.selectedLayers.length === 8}
                       aria-describedby="all-layers-description"
                     >
                       All Layers
@@ -1574,7 +1574,7 @@ export default function Dashboard() {
                     Let NeuroLint automatically select appropriate layers
                   </div>
                   <div id="all-layers-description" className="sr-only">
-                    Run all 7 layers of analysis and fixes
+                    Run all 8 layers of analysis and fixes
                   </div>
                                     <div
                     className="layer-checkboxes"
@@ -1695,6 +1695,76 @@ export default function Dashboard() {
                           </span>
                                                                                                 </span>
                       </label>
+                    <label key={7} className="layer-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={dashboardState.selectedLayers.includes(7)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setDashboardState((prev) => ({
+                                ...prev,
+                                selectedLayers: [
+                                  ...prev.selectedLayers,
+                                  7,
+                                ].sort(),
+                              }));
+                            } else {
+                              setDashboardState((prev) => ({
+                                ...prev,
+                                selectedLayers: prev.selectedLayers.filter(
+                                  (id) => id !== 7,
+                                ),
+                              }));
+                            }
+                          }}
+                          disabled={dashboardState.isLoading}
+                        />
+                        <span className="checkmark"></span>
+                        <span className="layer-info">
+                          <span className="layer-name">
+                            Layer 7:
+                          </span>
+                          <span className="layer-description">
+                            Adaptive learning
+                            <span className="layer-difficulty ai">AI LEARNING</span>
+                          </span>
+                        </span>
+                      </label>
+                    <label key={8} className="layer-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={dashboardState.selectedLayers.includes(8)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setDashboardState((prev) => ({
+                                ...prev,
+                                selectedLayers: [
+                                  ...prev.selectedLayers,
+                                  8,
+                                ].sort(),
+                              }));
+                            } else {
+                              setDashboardState((prev) => ({
+                                ...prev,
+                                selectedLayers: prev.selectedLayers.filter(
+                                  (id) => id !== 8,
+                                ),
+                              }));
+                            }
+                          }}
+                          disabled={dashboardState.isLoading}
+                        />
+                        <span className="checkmark"></span>
+                        <span className="layer-info">
+                          <span className="layer-name">
+                            Layer 8:
+                          </span>
+                          <span className="layer-description">
+                            Security forensics
+                            <span className="layer-difficulty security">SECURITY</span>
+                          </span>
+                        </span>
+                      </label>
                   </div>
                 </fieldset>
               </div>
@@ -1723,14 +1793,14 @@ export default function Dashboard() {
                   <span className="stat-value">
                     {dashboardState.selectedLayers.length === 0
                       ? "AUTO"
-                      : dashboardState.selectedLayers.length === 6
-                        ? "ALL 6"
+                      : dashboardState.selectedLayers.length === 8
+                        ? "ALL 8"
                         : dashboardState.selectedLayers.length.toString()}
                   </span>
                   <span className="stat-label">
                     {dashboardState.selectedLayers.length === 0
                       ? "Auto-Detect Layers"
-                      : dashboardState.selectedLayers.length === 6
+                      : dashboardState.selectedLayers.length === 8
                         ? "All Layers Active"
                         : `Custom Layers [${dashboardState.selectedLayers.join(",")}]`}
                   </span>
@@ -1820,7 +1890,7 @@ export default function Dashboard() {
                         </button>
                       </div>
                       <div id="migration-tier-description" className="sr-only">
-                        Quote-based pricing with all 7 layers
+                        Quote-based pricing with all 8 layers
                       </div>
                       <div id="enterprise-tier-description" className="sr-only">
                         Custom pricing with unlimited access
@@ -1875,11 +1945,11 @@ export default function Dashboard() {
                         aria-pressed="true"
                         aria-describedby="all-layers-migration-description"
                       >
-                        All 7 Layers
+                        All 8 Layers
                       </button>
                     </div>
                     <div id="all-layers-migration-description" className="sr-only">
-                      Run all 7 layers of migration and modernization
+                      Run all 8 layers of migration and modernization
                     </div>
                     <div
                       className="layer-checkboxes"
@@ -1972,6 +2042,27 @@ export default function Dashboard() {
                           </span>
                         </span>
                       </label>
+                      <label key={8} className="layer-checkbox">
+                        <input
+                          type="checkbox"
+                          checked
+                        />
+                        <span className="checkmark"></span>
+                        <span className="layer-info">
+                          <span className="layer-name">
+                            Layer 8:
+                          </span>
+                          <span className="layer-description">
+                            Security forensics
+                            <span style={{
+                              fontSize: "0.7rem",
+                              color: "rgba(244, 67, 54, 0.8)",
+                              marginLeft: "0.5rem",
+                              fontWeight: "500"
+                            }}>SECURITY</span>
+                          </span>
+                        </span>
+                      </label>
                     </div>
                   </fieldset>
                 </div>
@@ -1987,7 +2078,7 @@ export default function Dashboard() {
                       <span className="stat-label">Service Mode</span>
                     </div>
                     <div className="stat layers-stat">
-                      <span className="stat-value">ALL 7</span>
+                      <span className="stat-value">ALL 8</span>
                       <span className="stat-label">
                         Migration Layers
                       </span>
@@ -2023,7 +2114,7 @@ export default function Dashboard() {
                 <h3>CLI Migration Command</h3>
                 <p>For existing enterprise clients, use the CLI migration command:</p>
                 <div className="code-block">
-                  <code>neurolint migrate /path/to/project --layers=1,2,3,4,5,6,7 --dry-run</code>
+                  <code>neurolint migrate /path/to/project --layers=1,2,3,4,5,6,7,8 --dry-run</code>
                 </div>
                 <p className="cli-note">
                   <strong>Note:</strong> Migration command requires enterprise authentication and quote approval.

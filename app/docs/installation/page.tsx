@@ -145,7 +145,7 @@ export default function InstallationPage() {
               <p>Create a <code>.neurolintrc</code> file in your project root:</p>
               <div className="code-block enhanced-code-block">
                 <pre>{`{
-  "enabledLayers": [1, 2, 3, 4, 5, 6, 7],
+  "enabledLayers": [1, 2, 3, 4, 5, 6, 7, 8],
   "include": ["**/*.{ts,tsx,js,jsx,json}"],
   "exclude": ["**/node_modules/**", "**/dist/**", "**/.next/**"],
   "verbose": false,
@@ -158,7 +158,7 @@ export default function InstallationPage() {
               <div className="config-options">
                 <div className="option-item">
                   <h4>enabledLayers</h4>
-                  <p>Array of layer numbers to enable (1-7)</p>
+                  <p>Array of layer numbers to enable (1-8)</p>
                 </div>
                 <div className="option-item">
                   <h4>include</h4>

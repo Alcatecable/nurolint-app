@@ -79,7 +79,7 @@ export const POST = createProtectedHandler(
 export async function GET() {
   return NextResponse.json({
     command: "simplify",
-    description: "Simplify code by running all 7 layers of transformation",
+    description: "Simplify code by running all 8 layers of transformation",
     method: "POST",
     authentication: "Required (Bearer token or API key)",
     tierRequirements: {

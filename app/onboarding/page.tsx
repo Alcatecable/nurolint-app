@@ -151,7 +151,7 @@ export default function OnboardingPage() {
             marginBottom: "1.5rem",
             textAlign: "center"
           }}>
-            Deterministic fixes for AI-generated code issues and legacy React/Next.js modernization. Transform your codebase with our 7-layer system without AI hallucinations.
+            Deterministic fixes for AI-generated code issues and legacy React/Next.js modernization. Transform your codebase with our 8-layer system without AI hallucinations.
           </p>
           
           <div className="metrics-grid" style={{
@@ -502,8 +502,8 @@ export default function OnboardingPage() {
               { 
                 id: "full-modernization",
                 title: "Full Modernization",
-                desc: "Complete codebase transformation with all 7 layers",
-                layers: ["layer1", "layer2", "layer3", "layer4", "layer5", "layer6", "layer7"],
+                desc: "Complete codebase transformation with all 8 layers",
+                layers: ["layer1", "layer2", "layer3", "layer4", "layer5", "layer6", "layer7", "layer8"],
                 icon: (
                   <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -642,7 +642,7 @@ export default function OnboardingPage() {
     {
       id: 3,
       title: "Run your first analysis",
-      subtitle: "Experience NeuroLint's 7-layer transformation system",
+      subtitle: "Experience NeuroLint's 8-layer transformation system",
       actionText: "Go to Dashboard",
       skipText: "Skip for now",
       content: (
@@ -823,7 +823,7 @@ export default function OnboardingPage() {
             lineHeight: "1.6",
             marginBottom: "1.5rem"
           }}>
-            Your workspace is configured. Use our 7-layer system to fix AI code issues and modernize to Next.js 15.5.
+            Your workspace is configured. Use our 8-layer system to fix AI code issues and modernize to Next.js 15.5.
             No setup required - just drop your code and watch the magic happen.
           </p>
           

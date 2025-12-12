@@ -38,10 +38,10 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://app.neurolint.dev'),
   title: {
-    default: "NeuroLint - Rule-Based React/Next.js Code Transformation Engine | 7-Layer Auto-Fix Platform",
+    default: "NeuroLint - Rule-Based React/Next.js Code Transformation Engine | 8-Layer Auto-Fix Platform",
     template: "%s | NeuroLint - React/Next.js Code Transformation"
   },
-  description: "Transform legacy React/Next.js code with NeuroLint's rule-based 7-layer engine. Automated fixes for accessibility, hydration, patterns, and configurations with 95% accuracy. Not AI - proven rule-based transformations that actually fix your code.",
+  description: "Transform legacy React/Next.js code with NeuroLint's rule-based 8-layer engine. Automated fixes for accessibility, hydration, patterns, and configurations with 95% accuracy. Not AI - proven rule-based transformations that actually fix your code.",
   keywords: [
     "React code transformation",
     "Next.js code fixes",
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     "Next.js security",
     "React accessibility",
     "Next.js accessibility",
-    "7-layer transformation engine",
+    "8-layer transformation engine",
     "code auto-fix",
     "React patterns",
     "Next.js patterns",
@@ -188,7 +188,7 @@ export const metadata: Metadata = {
     url: 'https://app.neurolint.dev',
     siteName: 'NeuroLint',
     title: 'NeuroLint - Rule-Based React/Next.js Code Transformation Engine',
-    description: 'Transform legacy React/Next.js code with our rule-based 7-layer engine. Automated fixes for accessibility, hydration, patterns, and configurations with 95% accuracy.',
+    description: 'Transform legacy React/Next.js code with our rule-based 8-layer engine. Automated fixes for accessibility, hydration, patterns, and configurations with 95% accuracy.',
     images: [
       {
         url: 'https://app.neurolint.dev/og-image.png',
@@ -209,7 +209,7 @@ export const metadata: Metadata = {
     site: '@neurolint',
     creator: '@neurolint',
     title: 'NeuroLint - Rule-Based React/Next.js Code Transformation Engine',
-    description: 'Transform legacy React/Next.js code with our rule-based 7-layer engine. Automated fixes with 95% accuracy.',
+    description: 'Transform legacy React/Next.js code with our rule-based 8-layer engine. Automated fixes with 95% accuracy.',
     images: ['https://app.neurolint.dev/twitter-image.png'],
   },
   verification: {

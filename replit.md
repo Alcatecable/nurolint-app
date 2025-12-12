@@ -2,9 +2,18 @@
 
 ## Overview
 
-NeuroLint is a rule-based React/Next.js code transformation engine that provides automated code fixes through a 7-layer analysis system. The application is built on Next.js 14 with TypeScript, utilizing Supabase for backend services and authentication. It offers a freemium SaaS model with tiered access to code transformation capabilities, team collaboration features, and CI/CD integrations.
+NeuroLint is a rule-based React/Next.js code transformation engine that provides automated code fixes through an **8-layer analysis system**. The application is built on Next.js 15 with TypeScript, utilizing PostgreSQL (Neon) with Drizzle ORM for data persistence. It offers a freemium SaaS model with tiered access to code transformation capabilities, team collaboration features, and CI/CD integrations.
 
-The platform analyzes React/Next.js codebases and automatically fixes issues related to accessibility, hydration, patterns, and configurations with 95% accuracy using deterministic rule-based transformations (not AI-based pattern matching).
+The platform analyzes React/Next.js codebases and automatically fixes issues related to accessibility, hydration, patterns, security, and configurations with 95% accuracy using deterministic rule-based transformations (not AI-based pattern matching).
+
+## Enterprise Roadmap
+
+See **[roadmap.md](./roadmap.md)** for the comprehensive plan to achieve enterprise acquisition readiness with:
+- Shared-core integration from the CLI (`@neurolint/cli` on npm)
+- Layer 8 Security Forensics (CVE detection, IoC scanning)
+- Auto PR fixing-as-a-service
+- CI/CD integrations (GitHub Actions, GitLab, Vercel)
+- Developer extensions (VS Code, Cursor, JetBrains)
 
 ## User Preferences
 

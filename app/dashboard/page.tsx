@@ -36,6 +36,7 @@ import IntegrationsHub from "./components/IntegrationsHub";
 import ProjectsManager from "./components/ProjectsManager";
 import AnalysisResultsPanel from "./components/AnalysisResultsPanel";
 import EnterpriseAnalytics from "./components/EnterpriseAnalytics";
+import SecurityDashboard from "./components/SecurityDashboard";
 
 // Import the same result interfaces from the demo
 interface DemoResult {
@@ -2097,6 +2098,15 @@ export default function Dashboard() {
 
           {dashboardState.activeSection === "enterprise" && (
             <EnterpriseAnalytics />
+          )}
+
+          {/* Security Forensics Tab */}
+          {dashboardState.activeSection === "security" && (
+            <div className="tab-content">
+              <ErrorBoundary>
+                <SecurityDashboard />
+              </ErrorBoundary>
+            </div>
           )}
 
           {/* Code Analysis Tab */}

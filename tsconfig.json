@@ -30,9 +30,6 @@
       ],
       "@/lib/*": [
         "./lib/*"
-      ],
-      "@shared/*": [
-        "./shared/*"
       ]
     },
     "noUncheckedIndexedAccess": true,

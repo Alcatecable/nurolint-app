@@ -453,193 +453,350 @@ export default function OnboardingPage() {
     },
     {
       id: 2,
-      title: "What issues do you want to fix?",
-      subtitle: "Select the modernization layers most relevant to your codebase",
+      title: "Choose your focus area",
+      subtitle: "Select a preset that matches your needs - you can customize later",
       actionText: "Continue",
-      skipText: "Skip for now",
+      skipText: "Use all layers",
       content: (
         <div style={{ margin: "2rem 0" }}>
           <div style={{ display: "grid", gap: "1rem" }}>
             {[
               { 
-                id: "layer1", 
-                title: "Layer 1: Configuration Fixes", 
-                desc: "Modernize TypeScript, Next.js, and package.json"
+                id: "quick-start",
+                title: "Quick Start",
+                desc: "Essential fixes for any React/Next.js project",
+                layers: ["layer1", "layer2", "layer3"],
+                recommended: true,
+                icon: (
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                )
               },
               { 
-                id: "layer2", 
-                title: "Layer 2: Pattern Fixes", 
-                desc: "Fix HTML entities, console statements, browser APIs"
+                id: "nextjs-migration",
+                title: "Next.js 15.5 Migration",
+                desc: "Full migration path for upgrading to the latest Next.js",
+                layers: ["layer1", "layer4", "layer5"],
+                icon: (
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                )
               },
               { 
-                id: "layer3", 
-                title: "Layer 3: Component Fixes", 
-                desc: "Improve accessibility, performance, prop types"
+                id: "ai-code-cleanup",
+                title: "AI Code Cleanup",
+                desc: "Fix common issues in AI-generated React code",
+                layers: ["layer2", "layer3", "layer7"],
+                icon: (
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
+                    <path d="M12 2a10 10 0 0 1 10 10" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )
               },
               { 
-                id: "layer4", 
-                title: "Layer 4: Hydration Fixes", 
-                desc: "Add SSR safety guards for client-side code"
-              },
-              { 
-                id: "layer5", 
-                title: "Layer 5: Next.js 15.5 Fixes", 
-                desc: "App Router migration, directives, metadata"
-              },
-              { 
-                id: "layer6", 
-                title: "Layer 6: Testing Fixes", 
-                desc: "Add error boundaries and test setup"
-              },
-              { 
-                id: "layer7", 
-                title: "Layer 7: Adaptive Learning", 
-                desc: "Fix AI-generated code patterns"
+                id: "full-modernization",
+                title: "Full Modernization",
+                desc: "Complete codebase transformation with all 7 layers",
+                layers: ["layer1", "layer2", "layer3", "layer4", "layer5", "layer6", "layer7"],
+                icon: (
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                )
               }
-            ].map((feature) => (
-              <div
-                key={feature.id}
-                onClick={() => handleFeatureToggle(feature.id)}
-                className={userPreferences.interestedFeatures.includes(feature.id) ? "issue-item active" : "issue-item"}
-                style={{
-                  padding: "1rem",
-                  background: userPreferences.interestedFeatures.includes(feature.id)
-                    ? "linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(33, 150, 243, 0.15) 50%, rgba(255, 255, 255, 0.1) 100%)"
-                    : "rgba(255, 255, 255, 0.05)",
-                  border: "2px solid #000000",
-                  borderRadius: "12px",
-                  cursor: "pointer",
-                  transition: "all 0.3s ease",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                <div className="status" style={{
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "50%",
-                  border: "2px solid #000000",
-                  background: userPreferences.interestedFeatures.includes(feature.id)
-                    ? "rgba(76, 175, 80, 0.2)"
-                    : "rgba(255, 255, 255, 0.05)",
-                  color: userPreferences.interestedFeatures.includes(feature.id)
-                    ? "#4caf50"
-                    : "rgba(255, 255, 255, 0.3)",
-                  marginRight: "1rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.8rem",
-                  fontWeight: "bold"
-                }}>
-                  {userPreferences.interestedFeatures.includes(feature.id) && "✓"}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ 
-                    fontWeight: "600", 
-                    color: "#ffffff", 
-                    marginBottom: "0.25rem" 
+            ].map((preset) => {
+              const isSelected = preset.layers.every(l => userPreferences.interestedFeatures.includes(l)) &&
+                                 userPreferences.interestedFeatures.length === preset.layers.length;
+              return (
+                <div
+                  key={preset.id}
+                  onClick={() => setUserPreferences(prev => ({ ...prev, interestedFeatures: preset.layers }))}
+                  style={{
+                    padding: "1.25rem",
+                    background: isSelected
+                      ? "linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(33, 150, 243, 0.15) 50%, rgba(255, 255, 255, 0.1) 100%)"
+                      : "rgba(255, 255, 255, 0.05)",
+                    border: "2px solid #000000",
+                    borderRadius: "12px",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "1rem",
+                    position: "relative"
+                  }}
+                >
+                  {preset.recommended && (
+                    <div style={{
+                      position: "absolute",
+                      top: "-10px",
+                      right: "12px",
+                      background: "linear-gradient(135deg, rgba(76, 175, 80, 0.3) 0%, rgba(76, 175, 80, 0.2) 100%)",
+                      border: "2px solid #000000",
+                      borderRadius: "8px",
+                      padding: "2px 8px",
+                      fontSize: "0.7rem",
+                      fontWeight: "600",
+                      color: "#ffffff"
+                    }}>
+                      Recommended
+                    </div>
+                  )}
+                  <div style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: isSelected 
+                      ? "rgba(33, 150, 243, 0.2)" 
+                      : "rgba(255, 255, 255, 0.1)",
+                    border: "2px solid #000000",
+                    color: "#ffffff",
+                    flexShrink: 0
                   }}>
-                    {feature.title}
+                    {preset.icon}
                   </div>
-                  <div style={{ 
-                    fontSize: "0.875rem", 
-                    color: "rgba(255, 255, 255, 0.7)" 
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontWeight: "600", 
+                      color: "#ffffff", 
+                      marginBottom: "0.25rem",
+                      fontSize: "1rem"
+                    }}>
+                      {preset.title}
+                    </div>
+                    <div style={{ 
+                      fontSize: "0.875rem", 
+                      color: "rgba(255, 255, 255, 0.7)",
+                      marginBottom: "0.5rem"
+                    }}>
+                      {preset.desc}
+                    </div>
+                    <div style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "0.25rem"
+                    }}>
+                      {preset.layers.map(layer => (
+                        <span key={layer} style={{
+                          fontSize: "0.7rem",
+                          padding: "2px 6px",
+                          background: "rgba(255, 255, 255, 0.1)",
+                          borderRadius: "4px",
+                          color: "rgba(255, 255, 255, 0.6)"
+                        }}>
+                          L{layer.replace("layer", "")}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "50%",
+                    border: "2px solid #000000",
+                    background: isSelected
+                      ? "rgba(76, 175, 80, 0.3)"
+                      : "rgba(255, 255, 255, 0.05)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0
                   }}>
-                    {feature.desc}
+                    {isSelected && (
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4caf50" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+          <div style={{
+            marginTop: "1rem",
+            padding: "0.75rem",
+            background: "rgba(255, 255, 255, 0.05)",
+            borderRadius: "8px",
+            textAlign: "center"
+          }}>
+            <span style={{
+              fontSize: "0.8rem",
+              color: "rgba(255, 255, 255, 0.6)"
+            }}>
+              You can enable or disable individual layers anytime in the dashboard
+            </span>
           </div>
         </div>
       )
     },
     {
       id: 3,
-      title: "See NeuroLint in action",
-      subtitle: "Real example showing how we fix common React issues",
-      actionText: "Analyze Sample Code",
-      skipText: "Skip demo",
+      title: "Run your first analysis",
+      subtitle: "Experience NeuroLint's 7-layer transformation system",
+      actionText: "Go to Dashboard",
+      skipText: "Skip for now",
       content: (
         <div style={{ margin: "2rem 0" }}>
-          <div className="insight-card" style={{
-            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.02) 100%)",
+          <div style={{
+            background: "linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(33, 150, 243, 0.1) 50%, rgba(255, 255, 255, 0.05) 100%)",
             border: "2px solid #000000",
             borderRadius: "16px",
             padding: "1.5rem",
-            marginBottom: "1.5rem"
+            marginBottom: "1.5rem",
+            textAlign: "center"
           }}>
-            <div style={{ 
-              fontSize: "0.875rem", 
-              color: "rgba(255, 255, 255, 0.6)",
-              marginBottom: "0.5rem",
-              fontFamily: "monospace"
+            <div style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, rgba(33, 150, 243, 0.3) 0%, rgba(33, 150, 243, 0.2) 100%)",
+              border: "2px solid #000000",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1rem auto"
             }}>
-              Problematic React Component:
-            </div>
-            <pre style={{
-              margin: 0,
-              fontSize: "0.8rem",
-              color: "#ffffff",
-              fontFamily: "monospace",
-              lineHeight: "1.4",
-              overflow: "auto"
-            }}>
-{`function UserProfile({ userId }) {
-  const [user, setUser] = useState(null);
-  
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    fetchUser(userId).then(setUser);
-  }, []);
-  
-  if (!user) return <div>Loading...</div>;
-  
-  return (
-    <div style={{color: 'blue'}}>
-      <h1>{user.name}</h1>
-      {user.items.map(item => <span>{item.text}</span>)}
-      <p>&quot;Welcome to our app&quot;</p>
-    </div>
-  );
-}`}
-            </pre>
-          </div>
-          
-          <div className="insight-card" style={{
-            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.02) 100%)",
-            border: "2px solid #000000",
-            borderRadius: "16px",
-            padding: "1.5rem"
-          }}>
-            <div style={{ 
-              fontSize: "0.9rem", 
-              fontWeight: "600",
-              color: "#ffffff",
-              marginBottom: "0.75rem"
-            }}>
-              NeuroLint automatically detects and fixes:
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#ffffff" strokeWidth="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
             </div>
             <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "0.75rem",
-              fontSize: "0.875rem"
+              fontSize: "1.1rem",
+              fontWeight: "600",
+              color: "#ffffff",
+              marginBottom: "0.5rem"
             }}>
-              <div style={{ color: "rgba(255, 255, 255, 0.8)" }}>
-                <strong>Layer 4:</strong> localStorage without SSR guard
-              </div>
-              <div style={{ color: "rgba(255, 255, 255, 0.8)" }}>
-                <strong>Layer 3:</strong> React 18 key props modernization
-              </div>
-              <div style={{ color: "rgba(255, 255, 255, 0.8)" }}>
-                <strong>Layer 2:</strong> Content standardization (&quot;)
-              </div>
-              <div style={{ color: "rgba(255, 255, 255, 0.8)" }}>
-                <strong>Layer 1:</strong> useEffect dependency array
+              Your first code analysis awaits
+            </div>
+            <div style={{
+              fontSize: "0.9rem",
+              color: "rgba(255, 255, 255, 0.7)",
+              lineHeight: "1.5"
+            }}>
+              Paste your React/Next.js code in the dashboard and see instant fixes across all selected layers
+            </div>
+          </div>
+
+          <div style={{ 
+            display: "grid", 
+            gap: "0.75rem",
+            marginBottom: "1.5rem"
+          }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "2px solid #000000",
+              borderRadius: "12px"
+            }}>
+              <div style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                background: "rgba(76, 175, 80, 0.2)",
+                border: "2px solid #000000",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                fontWeight: "600",
+                fontSize: "0.875rem"
+              }}>1</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "0.9rem", fontWeight: "600", color: "#ffffff" }}>Paste your code</div>
+                <div style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.6)" }}>Drop a React component or upload a file</div>
               </div>
             </div>
+            
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "2px solid #000000",
+              borderRadius: "12px"
+            }}>
+              <div style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                background: "rgba(33, 150, 243, 0.2)",
+                border: "2px solid #000000",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                fontWeight: "600",
+                fontSize: "0.875rem"
+              }}>2</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "0.9rem", fontWeight: "600", color: "#ffffff" }}>Review suggestions</div>
+                <div style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.6)" }}>See what NeuroLint can improve in your code</div>
+              </div>
+            </div>
+            
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "2px solid #000000",
+              borderRadius: "12px"
+            }}>
+              <div style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                background: "rgba(156, 39, 176, 0.2)",
+                border: "2px solid #000000",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                fontWeight: "600",
+                fontSize: "0.875rem"
+              }}>3</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "0.9rem", fontWeight: "600", color: "#ffffff" }}>Apply fixes</div>
+                <div style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.6)" }}>One click to modernize your component</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            background: "rgba(255, 255, 255, 0.05)",
+            border: "2px solid #000000",
+            borderRadius: "12px",
+            padding: "1rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem"
+          }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255, 255, 255, 0.6)" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <span style={{
+              fontSize: "0.85rem",
+              color: "rgba(255, 255, 255, 0.7)"
+            }}>
+              Your dashboard has a getting started checklist to guide you through your first analysis
+            </span>
           </div>
         </div>
       )
@@ -954,39 +1111,78 @@ export default function OnboardingPage() {
 
             
             <div style={{ marginBottom: "2rem" }}>
-              <div className="time-filters" style={{
+              <div style={{
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                gap: "0.5rem",
-                marginBottom: "1rem"
+                gap: "0.25rem",
+                marginBottom: "1rem",
+                padding: "0 1rem"
               }}>
-                {steps.map((_, index) => (
-                  <div
-                    key={index}
-                    className={index <= currentStep ? "filter-btn active" : "filter-btn"}
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      background: index <= currentStep 
-                        ? "linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(33, 150, 243, 0.15) 50%, rgba(255, 255, 255, 0.1) 100%)"
-                        : "rgba(255, 255, 255, 0.2)",
-                      border: index <= currentStep ? "2px solid #000000" : "none",
-                      transition: "all 0.3s ease",
-                      padding: 0,
-                      cursor: "default"
-                    }}
-                  />
+                {steps.map((step, index) => (
+                  <React.Fragment key={index}>
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      minWidth: "60px"
+                    }}>
+                      <div style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        background: index < currentStep 
+                          ? "linear-gradient(135deg, rgba(76, 175, 80, 0.3) 0%, rgba(76, 175, 80, 0.2) 100%)"
+                          : index === currentStep 
+                            ? "linear-gradient(135deg, rgba(33, 150, 243, 0.3) 0%, rgba(33, 150, 243, 0.2) 100%)"
+                            : "rgba(255, 255, 255, 0.1)",
+                        border: "2px solid #000000",
+                        color: index <= currentStep ? "#ffffff" : "rgba(255, 255, 255, 0.4)",
+                        transition: "all 0.3s ease"
+                      }}>
+                        {index < currentStep ? (
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          index + 1
+                        )}
+                      </div>
+                      <div style={{
+                        fontSize: "0.7rem",
+                        color: index <= currentStep ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 255, 255, 0.4)",
+                        textAlign: "center",
+                        fontWeight: index === currentStep ? "600" : "400",
+                        maxWidth: "70px",
+                        lineHeight: "1.2"
+                      }}>
+                        {index === 0 ? "Welcome" : 
+                         index === 1 ? "About You" : 
+                         index === 2 ? "Focus Areas" : 
+                         index === 3 ? "Try It" : "Ready"}
+                      </div>
+                    </div>
+                    {index < steps.length - 1 && (
+                      <div style={{
+                        flex: 1,
+                        height: "2px",
+                        background: index < currentStep 
+                          ? "linear-gradient(90deg, rgba(76, 175, 80, 0.5), rgba(76, 175, 80, 0.3))"
+                          : "rgba(255, 255, 255, 0.15)",
+                        marginTop: "-20px",
+                        minWidth: "20px",
+                        maxWidth: "40px",
+                        transition: "all 0.3s ease"
+                      }} />
+                    )}
+                  </React.Fragment>
                 ))}
-              </div>
-              <div style={{
-                textAlign: "center",
-                fontSize: "0.875rem",
-                color: "rgba(255, 255, 255, 0.6)",
-                fontWeight: "500"
-              }}>
-                Step {currentStep + 1} of {steps.length}
               </div>
             </div>
 

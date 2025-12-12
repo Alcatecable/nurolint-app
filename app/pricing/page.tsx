@@ -314,7 +314,7 @@ export default function PricingPage() {
                   Pricing
                 </a>
                 <a
-                  href="/docs"
+                  href="https://neurolint.dev/docs"
                   className="nav-link"
                   aria-label="View documentation"
                 >

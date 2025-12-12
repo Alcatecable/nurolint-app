@@ -99,7 +99,7 @@ export default function ActivationChecklist({
     if (onNavigateToDocs) {
       onNavigateToDocs();
     } else {
-      window.open("/docs", "_blank");
+      window.open("https://neurolint.dev/docs", "_blank");
     }
     handleToggle("explore-layers");
   };

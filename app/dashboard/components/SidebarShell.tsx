@@ -276,7 +276,7 @@ const sidebarItems: SidebarItem[] = [
     label: "Documentation",
     description: "Guides & API reference",
     isExternal: true,
-    href: "/docs",
+    href: "https://neurolint.dev/docs",
   },
   {
     id: "settings",

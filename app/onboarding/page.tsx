@@ -139,7 +139,7 @@ export default function OnboardingPage() {
     {
       id: 0,
       title: "Welcome to NeuroLint",
-      subtitle: "The Anti-AI React/Next.js Modernization Platform",
+      subtitle: "Rule-Based React/Next.js Code Transformation Engine",
       actionText: "Get Started",
       content: (
         <div style={{ margin: "2rem 0" }}>

@@ -37,6 +37,7 @@ import ProjectsManager from "./components/ProjectsManager";
 import AnalysisResultsPanel from "./components/AnalysisResultsPanel";
 import EnterpriseAnalytics from "./components/EnterpriseAnalytics";
 import SecurityDashboard from "./components/SecurityDashboard";
+import ActivationChecklist from "./components/ActivationChecklist";
 
 // Import the same result interfaces from the demo
 interface DemoResult {
@@ -2036,6 +2037,10 @@ export default function Dashboard() {
             <div className="tab-content">
               <ErrorBoundary>
                 <OnboardingWelcome />
+                <ActivationChecklist 
+                  onNavigateToAnalyzer={() => setDashboardState(prev => ({ ...prev, activeSection: "analyze" }))}
+                  hasAnalysisHistory={dashboardState.analysisHistory.length > 0}
+                />
                 <Overview analysisHistory={dashboardState.analysisHistory} />
               </ErrorBoundary>
             </div>

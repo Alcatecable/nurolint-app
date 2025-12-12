@@ -2,92 +2,85 @@
 
 import React, { useState, useEffect } from "react";
 
-interface ChecklistItem {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  action?: () => void;
-  actionLabel?: string;
-}
-
 interface ActivationChecklistProps {
+  onNavigateToAnalyzer?: () => void;
+  onNavigateToDocs?: () => void;
+  hasAnalysisHistory?: boolean;
   onDismiss?: () => void;
 }
 
-export default function ActivationChecklist({ onDismiss }: ActivationChecklistProps) {
-  const [items, setItems] = useState<ChecklistItem[]>([
-    {
-      id: "first-analysis",
-      title: "Run your first analysis",
-      description: "Paste code in the analyzer to see NeuroLint in action",
-      completed: false,
-      actionLabel: "Start analysis"
-    },
-    {
-      id: "review-suggestions",
-      title: "Review suggestions",
-      description: "See what improvements NeuroLint recommends",
-      completed: false
-    },
-    {
-      id: "apply-fix",
-      title: "Apply a fix",
-      description: "Use one-click apply to modernize your code",
-      completed: false
-    },
-    {
-      id: "explore-layers",
-      title: "Explore layer documentation",
-      description: "Learn what each of the 7 layers does",
-      completed: false,
-      actionLabel: "View docs"
-    }
-  ]);
+export default function ActivationChecklist({ 
+  onNavigateToAnalyzer, 
+  onNavigateToDocs,
+  hasAnalysisHistory = false,
+  onDismiss 
+}: ActivationChecklistProps) {
+  const [progress, setProgress] = useState<Record<string, boolean>>({
+    "first-analysis": false,
+    "review-suggestions": false,
+    "apply-fix": false,
+    "explore-layers": false
+  });
   
   const [dismissed, setDismissed] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
+    // Check if user recently completed onboarding (within last 7 days)
+    const onboardingCompleted = localStorage.getItem("onboarding_completed");
+    const checklistDismissed = localStorage.getItem("neurolint-checklist-dismissed");
+    
+    if (checklistDismissed === "true") {
+      setDismissed(true);
+      return;
+    }
+    
+    // Show checklist for users who recently completed onboarding
+    if (onboardingCompleted === "true") {
+      setIsNewUser(true);
+    }
+    
+    // Load saved progress
     const savedProgress = localStorage.getItem("neurolint-checklist-progress");
     if (savedProgress) {
       try {
-        const progress = JSON.parse(savedProgress);
-        setItems(prev => prev.map(item => ({
-          ...item,
-          completed: progress[item.id] || false
-        })));
+        const parsed = JSON.parse(savedProgress);
+        setProgress(prev => ({ ...prev, ...parsed }));
       } catch (e) {
-        console.error("Error loading checklist progress:", e);
+        // Ignore parse errors
       }
-    }
-    
-    const wasDismissed = localStorage.getItem("neurolint-checklist-dismissed");
-    if (wasDismissed === "true") {
-      setDismissed(true);
     }
   }, []);
 
+  // Auto-mark first-analysis if user has analysis history
   useEffect(() => {
-    const progress: Record<string, boolean> = {};
-    items.forEach(item => {
-      progress[item.id] = item.completed;
-    });
+    if (hasAnalysisHistory && !progress["first-analysis"]) {
+      setProgress(prev => {
+        const updated = { ...prev, "first-analysis": true, "review-suggestions": true };
+        localStorage.setItem("neurolint-checklist-progress", JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [hasAnalysisHistory, progress]);
+
+  // Save progress and check for completion celebration
+  useEffect(() => {
     localStorage.setItem("neurolint-checklist-progress", JSON.stringify(progress));
     
-    const allCompleted = items.every(item => item.completed);
-    if (allCompleted && !showCelebration) {
+    const allCompleted = Object.values(progress).every(v => v);
+    if (allCompleted && !showCelebration && isNewUser) {
       setShowCelebration(true);
       setTimeout(() => {
         setShowCelebration(false);
-      }, 3000);
+        // Auto-dismiss after celebration
+        handleDismiss();
+      }, 4000);
     }
-  }, [items, showCelebration]);
+  }, [progress, showCelebration, isNewUser]);
 
   const handleToggle = (id: string) => {
-    setItems(prev => prev.map(item => 
-      item.id === id ? { ...item, completed: !item.completed } : item
-    ));
+    setProgress(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleDismiss = () => {
@@ -96,12 +89,59 @@ export default function ActivationChecklist({ onDismiss }: ActivationChecklistPr
     onDismiss?.();
   };
 
-  const completedCount = items.filter(item => item.completed).length;
-  const progressPercent = (completedCount / items.length) * 100;
+  const handleStartAnalysis = () => {
+    if (onNavigateToAnalyzer) {
+      onNavigateToAnalyzer();
+    }
+  };
 
-  if (dismissed) {
+  const handleViewDocs = () => {
+    if (onNavigateToDocs) {
+      onNavigateToDocs();
+    } else {
+      window.open("/docs", "_blank");
+    }
+    handleToggle("explore-layers");
+  };
+
+  // Don't render if dismissed or not a new user
+  if (dismissed || !isNewUser) {
     return null;
   }
+
+  const items = [
+    {
+      id: "first-analysis",
+      title: "Run your first analysis",
+      description: "Paste code in the analyzer to see NeuroLint in action",
+      completed: progress["first-analysis"],
+      actionLabel: "Start analysis",
+      action: handleStartAnalysis
+    },
+    {
+      id: "review-suggestions",
+      title: "Review suggestions",
+      description: "See what improvements NeuroLint recommends",
+      completed: progress["review-suggestions"]
+    },
+    {
+      id: "apply-fix",
+      title: "Apply a fix",
+      description: "Use one-click apply to modernize your code",
+      completed: progress["apply-fix"]
+    },
+    {
+      id: "explore-layers",
+      title: "Explore layer documentation",
+      description: "Learn what each of the 7 layers does",
+      completed: progress["explore-layers"],
+      actionLabel: "View docs",
+      action: handleViewDocs
+    }
+  ];
+
+  const completedCount = Object.values(progress).filter(v => v).length;
+  const progressPercent = (completedCount / 4) * 100;
 
   return (
     <div style={{
@@ -220,7 +260,7 @@ export default function ActivationChecklist({ onDismiss }: ActivationChecklistPr
         color: "rgba(255, 255, 255, 0.5)",
         marginBottom: "1rem"
       }}>
-        {completedCount} of {items.length} completed
+        {completedCount} of 4 completed
       </div>
 
       <div style={{ display: "grid", gap: "0.75rem" }}>

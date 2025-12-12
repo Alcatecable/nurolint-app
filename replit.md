@@ -1,5 +1,22 @@
 # NeuroLint App
 
+---
+## ⚠️ STOP - READ THIS FIRST ⚠️
+---
+
+### DO NOT MIGRATE THE DATABASE
+
+This project uses **SUPABASE** for its database. 
+
+- **DO NOT** create a Replit Postgres database
+- **DO NOT** migrate to Drizzle ORM or any other ORM  
+- **DO NOT** touch the Supabase configuration
+- **DO NOT** suggest or plan any database migration
+
+The user explicitly requested this. Respect it.
+
+---
+
 ## CRITICAL: Database & Backend Configuration
 
 **THIS PROJECT USES SUPABASE EXCLUSIVELY. DO NOT MIGRATE TO REPLIT DB OR ANY OTHER DATABASE.**

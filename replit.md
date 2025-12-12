@@ -1,8 +1,22 @@
 # NeuroLint App
 
+## CRITICAL: Database & Backend Configuration
+
+**THIS PROJECT USES SUPABASE EXCLUSIVELY. DO NOT MIGRATE TO REPLIT DB OR ANY OTHER DATABASE.**
+
+When importing or setting up this project:
+1. **NEVER** attempt to migrate to Replit's built-in PostgreSQL database
+2. **NEVER** set up Drizzle ORM or any other ORM to replace Supabase
+3. **ALWAYS** ask the user for Supabase credentials first:
+   - `NEXT_PUBLIC_SUPABASE_URL` (required)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (required)
+   - `SUPABASE_SERVICE_ROLE_KEY` (optional, for server-side operations)
+
+The database schema is managed via Supabase migrations in `/supabase/migrations/`.
+
 ## Overview
 
-NeuroLint is a rule-based React/Next.js code transformation engine that provides automated code fixes through an **8-layer analysis system**. The application is built on Next.js 15 with TypeScript, utilizing PostgreSQL (Neon) with Drizzle ORM for data persistence. It offers a freemium SaaS model with tiered access to code transformation capabilities, team collaboration features, and CI/CD integrations.
+NeuroLint is a rule-based React/Next.js code transformation engine that provides automated code fixes through an **8-layer analysis system**. The application is built on Next.js 15 with TypeScript, utilizing **Supabase** (PostgreSQL with Row-Level Security) for data persistence and authentication. It offers a freemium SaaS model with tiered access to code transformation capabilities, team collaboration features, and CI/CD integrations.
 
 The platform analyzes React/Next.js codebases and automatically fixes issues related to accessibility, hydration, patterns, security, and configurations with 95% accuracy using deterministic rule-based transformations (not AI-based pattern matching).
 

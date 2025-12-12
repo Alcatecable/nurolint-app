@@ -31,8 +31,8 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
+const supabaseAnonKey = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'];
 
 let supabase: any = null;
 
@@ -152,12 +152,13 @@ export async function POST(request: NextRequest) {
 
     // Profile should be created automatically by database trigger
     // But let's ensure it exists with a safe upsert
+    // Note: first_name and last_name are GENERATED columns from full_name
+    const fullName = `${sanitizedFirstName} ${sanitizedLastName}`.trim();
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
         id: authData.user.id,
         email: authData.user.email,
-        first_name: sanitizedFirstName,
-        last_name: sanitizedLastName,
+        full_name: fullName || null,
         plan: "free",
         updated_at: new Date().toISOString(),
       },

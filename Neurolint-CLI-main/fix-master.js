@@ -308,7 +308,8 @@ class LayerOrchestrator {
             changes: transformResult.changeCount,
             originalCode: transformResult.originalCode,
             code: transformResult.code,
-            results: transformResult.results
+            results: transformResult.results,
+            securityFindings: transformResult.securityFindings || []
           });
           break;
         } catch (error) {
@@ -500,16 +501,13 @@ async function executeLayers(code, layers, options = {}) {
       // Create centralized backup before layer execution
       if (!dryRun) {
         try {
-          // Initialize backup manager if not already done
-          if (!this.backupManager) {
-            this.backupManager = new BackupManager({
-              backupDir: '.neurolint-backups',
-              maxBackups: 10
-            });
-          }
+          // Create backup using backup manager (local instance for standalone function)
+          const backupManager = new BackupManager({
+            backupDir: '.neurolint-backups',
+            maxBackups: 10
+          });
           
-          // Create backup using centralized manager
-          const backupResult = await this.backupManager.createBackup(filePath, `layer-${layerNum}`);
+          const backupResult = await backupManager.createBackup(filePath, `layer-${layerNum}`);
           
           if (backupResult.success) {
             state.backups.push(backupResult.backupPath);
@@ -527,6 +525,9 @@ async function executeLayers(code, layers, options = {}) {
           }
         }
       }
+
+      // Capture code before transformation for Layer 7 learning
+      const previousCode = finalCode;
 
       // Execute layer transformation with retry logic
       let attempts = 0;
@@ -590,10 +591,15 @@ async function executeLayers(code, layers, options = {}) {
       if (result) {
         results.push({
           layer: layerNum,
+          layerId: layerNum,
           success: result.success,
           changes: result.changes?.length || 0,
+          changeCount: result.changeCount || result.changes?.length || 0,
           warnings: result.warnings || [],
-          error: result.error
+          error: result.error,
+          originalCode: previousCode,
+          code: result.code,
+          securityFindings: result.securityFindings || []
         });
       }
 
@@ -618,7 +624,11 @@ async function executeLayers(code, layers, options = {}) {
       if (!dryRun && state.backups.length > 0) {
         try {
           const lastBackup = state.backups[state.backups.length - 1];
-          const restoreResult = await this.backupManager.restoreFromBackup(lastBackup, filePath);
+          const restoreBackupManager = new BackupManager({
+            backupDir: '.neurolint-backups',
+            maxBackups: 10
+          });
+          const restoreResult = await restoreBackupManager.restoreFromBackup(lastBackup, filePath);
           
           if (restoreResult.success) {
             finalCode = restoreResult.backupInfo.content;

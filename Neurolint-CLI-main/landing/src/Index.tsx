@@ -1,9 +1,25 @@
+/**
+ * Copyright (c) 2025 NeuroLint
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 import React, { useEffect, useState, useRef } from "react";
 import { FAQSection } from "./FAQSection";
 import { ModalDemo } from "./components/ModalDemo";
 import { LayersDocSection } from "./components/LayersDocSection";
 import { LandingFooter } from "./LandingFooter";
-import 'asciinema-player/dist/bundle/asciinema-player.css';
+import { DemoCarousel } from "./components/DemoCarousel";
 
 import {
   Target,
@@ -220,204 +236,10 @@ const TypewriterHeadline = () => {
   );
 };
 
-// CLI Demo Player Component with real asciinema player - Enterprise Edition
-const AsciinemaPlayerComponent = () => {
-  const playerRef = React.useRef<HTMLDivElement>(null);
-  const playerInstance = React.useRef<any>(null);
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const [speed, setSpeed] = React.useState(1);
-  const [currentTime, setCurrentTime] = React.useState(0);
-  const [duration, setDuration] = React.useState(0);
-  const [player, setPlayer] = React.useState<any>(null);
-  const [showControls, setShowControls] = React.useState(true);
-
-  // Dynamically import the player module
-  React.useEffect(() => {
-    import('asciinema-player').then((p) => {
-      setPlayer(p);
-    });
-  }, []);
-
-  // Create and dispose player instance
-  React.useEffect(() => {
-    if (!player || !playerRef.current || playerInstance.current) return;
-
-    try {
-      playerInstance.current = player.create(
-        '/demo-new.cast',
-        playerRef.current,
-        {
-          autoPlay: true,
-          loop: true,
-          speed: speed,
-          fit: 'width',
-          theme: 'monokai',
-          fontSize: 'medium',
-          terminalFontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace",
-        }
-      );
-
-      setIsPlaying(true);
-
-      const intervalId = setInterval(() => {
-        if (playerInstance.current) {
-          setCurrentTime(playerInstance.current.getCurrentTime() || 0);
-          setDuration(playerInstance.current.getDuration() || 0);
-        }
-      }, 100);
-
-      return () => {
-        clearInterval(intervalId);
-        if (playerInstance.current) {
-          try {
-            playerInstance.current.dispose();
-          } catch (e) {
-            // Ignore disposal errors
-          }
-          playerInstance.current = null;
-        }
-      };
-    } catch (error) {
-      console.error('Failed to load asciinema player:', error);
-      return;
-    }
-  }, [player, speed]);
-
-  const togglePlayPause = () => {
-    if (!playerInstance.current) return;
-    
-    if (isPlaying) {
-      playerInstance.current.pause();
-      setIsPlaying(false);
-    } else {
-      playerInstance.current.play();
-      setIsPlaying(true);
-    }
-  };
-
-  const changeSpeed = () => {
-    const speeds = [0.5, 1, 1.5, 2];
-    const currentIndex = speeds.indexOf(speed);
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % speeds.length;
-    const nextSpeed = speeds[nextIndex];
-    if (nextSpeed !== undefined) {
-      setSpeed(nextSpeed);
-      if (playerInstance.current) {
-        playerInstance.current.setSpeed(nextSpeed);
-      }
-    }
-  };
-
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!playerInstance.current || !duration) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = x / rect.width;
-    const newTime = percentage * duration;
-    
-    playerInstance.current.seek(newTime);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <div 
-      className="w-full relative group"
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
-    >
-      {/* Player Container with enhanced styling */}
-      <div 
-        ref={playerRef} 
-        className="w-full overflow-hidden"
-        style={{ 
-          minHeight: '450px',
-          background: 'linear-gradient(180deg, #0d1117 0%, #161b22 100%)',
-        }}
-      />
-      
-      {/* Enterprise-grade Control Bar */}
-      <div className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
-        
-        <div className="relative px-5 py-4">
-          {/* Progress Bar - Sleek design */}
-          <div 
-            className="group/progress flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden cursor-pointer mb-4 hover:h-2 transition-all duration-200"
-            onClick={handleSeek}
-          >
-            <div 
-              className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full transition-all duration-100 relative"
-              style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-            >
-              {/* Glow effect on progress */}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg shadow-emerald-500/50 opacity-0 group-hover/progress:opacity-100 transition-opacity" />
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between gap-6">
-            {/* Left controls */}
-            <div className="flex items-center gap-3">
-              {/* Play/Pause Button - Refined */}
-              <button
-                onClick={togglePlayPause}
-                className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-                aria-label={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? (
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                )}
-              </button>
-
-              {/* Time Display - Minimal */}
-              <div className="text-white/80 text-sm font-mono tracking-wide">
-                <span className="text-white">{formatTime(currentTime)}</span>
-                <span className="text-white/40 mx-1">/</span>
-                <span className="text-white/60">{formatTime(duration)}</span>
-              </div>
-            </div>
-
-            {/* Right controls */}
-            <div className="flex items-center gap-3">
-              {/* Speed Control - Pill style */}
-              <button 
-                onClick={changeSpeed}
-                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white/80 hover:text-white text-xs font-mono transition-all duration-200 border border-black"
-                aria-label={`Playback speed: ${speed}x`}
-              >
-                {speed}x
-              </button>
-
-              {/* Live indicator */}
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 rounded-full border border-black">
-                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="text-emerald-400 text-xs font-medium">LIVE</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default function Index() {
   const [mounted, setMounted] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [bannerVisible, setBannerVisible] = React.useState(true);
-  const [demoModalOpen, setDemoModalOpen] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   // Lazy loading refs for each section
@@ -525,12 +347,16 @@ export default function Index() {
                 Blog
               </a>
               <a 
-                href="https://github.com/Alcatecablee/Neurolint-CLI/blob/main/CLI_USAGE.md"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/docs"
                 className="px-4 py-2 min-h-[44px] flex items-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 text-sm font-medium"
               >
                 Docs
+              </a>
+              <a 
+                href="/security"
+                className="px-4 py-2 min-h-[44px] flex items-center text-red-400 hover:text-red-300 hover:bg-red-500/5 rounded-lg transition-all duration-200 text-sm font-medium"
+              >
+                Security
               </a>
               <div className="w-px h-6 bg-white/10 mx-2"></div>
               <a 
@@ -592,12 +418,16 @@ export default function Index() {
               Blog
             </a>
             <a 
-              href="https://github.com/Alcatecablee/Neurolint-CLI/blob/main/CLI_USAGE.md"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/docs"
               className="block px-4 py-3 min-h-[48px] text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 text-base font-medium touch-manipulation"
             >
               Docs
+            </a>
+            <a 
+              href="/security"
+              className="block px-4 py-3 min-h-[48px] text-red-400 hover:text-red-300 hover:bg-red-500/5 rounded-lg transition-all duration-200 text-base font-medium touch-manipulation"
+            >
+              Security
             </a>
             <div className="border-t border-zinc-800 my-3"></div>
             <div className="flex items-center gap-3 px-4">
@@ -706,225 +536,26 @@ export default function Index() {
         </div>
       </section>
 
-      {/* CLI Demo Video Section - Enterprise Edition (mobile-first) */}
-      <section className="py-12 sm:py-16 md:py-24 lg:py-32 px-4 relative">
-        {/* Subtle background glow */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-gradient-to-r from-emerald-500/5 via-cyan-500/5 to-blue-500/5 rounded-full blur-3xl" />
-        </div>
-
-        <div className="max-w-6xl mx-auto relative">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-black rounded-full mb-6">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-emerald-400 text-sm font-medium">Live Demo</span>
-            </div>
-            <h2 className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-4 sm:mb-6 tracking-tight text-white">
+      {/* Live Demo Carousel Section */}
+      <section id="comprehensive-demo" className="py-12 sm:py-16 md:py-24 px-4 relative">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10 md:mb-14">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 tracking-tight text-white">
               See It In Action
             </h2>
-            <p className="text-lg sm:text-xl md:text-2xl text-zinc-400 max-w-3xl mx-auto">
-              Watch NeuroLint analyze <span className="text-white font-medium">288 files</span> and automatically fix issues in seconds
+            <p className="text-lg sm:text-xl text-zinc-400 max-w-2xl mx-auto">
+              Watch the complete security workflow: patch, scan, and protect
             </p>
           </div>
           
-          {/* Premium Video Preview Card */}
-          <div className="relative group">
-            {/* Outer glow effect on hover */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            
-            <div className="relative bg-[#0d1117] rounded-2xl border border-black shadow-2xl overflow-hidden">
-              {/* macOS-style window header */}
-              <div className="bg-[#161b22] border-b border-black px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {/* Traffic lights */}
-                    <div className="flex gap-2">
-                      <div className="w-3 h-3 rounded-full bg-[#ff5f57] shadow-sm shadow-red-500/30" />
-                      <div className="w-3 h-3 rounded-full bg-[#febc2e] shadow-sm shadow-yellow-500/30" />
-                      <div className="w-3 h-3 rounded-full bg-[#28c840] shadow-sm shadow-green-500/30" />
-                    </div>
-                    {/* Tab-style title */}
-                    <div className="hidden sm:flex items-center gap-2 ml-4 px-3 py-1.5 bg-[#0d1117] rounded-lg border border-black">
-                      <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span className="text-sm text-zinc-400 font-mono">neurolint-demo</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-600 font-mono hidden md:block">zsh</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Terminal content preview - clickable */}
-              <button
-                onClick={() => setDemoModalOpen(true)}
-                className="w-full relative cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-inset touch-manipulation"
-                aria-label="Open demo video"
-              >
-                <div className="relative bg-[#0d1117] p-4 sm:p-6 md:p-10 lg:p-12 min-h-[200px] sm:min-h-[240px] md:min-h-[320px]">
-                  {/* Scanline effect */}
-                  <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30" />
-                  
-                  {/* Terminal Preview Lines - Mobile optimized */}
-                  <div className="font-mono text-[10px] xs:text-xs sm:text-sm md:text-base space-y-1 sm:space-y-2 text-left max-w-3xl opacity-70 group-hover:opacity-50 transition-opacity duration-300 overflow-hidden">
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-emerald-400">$</span>
-                      <span className="text-white truncate">npm install -g @neurolint/cli</span>
-                    </div>
-                    <div className="text-zinc-500 text-[10px] xs:text-xs hidden xs:block">added 132 packages in 37s</div>
-                    <div className="mt-2 sm:mt-4 flex items-center gap-1 sm:gap-2">
-                      <span className="text-emerald-400">$</span>
-                      <span className="text-white truncate">neurolint analyze . --verbose</span>
-                    </div>
-                    <div className="text-zinc-400 truncate">Processing <span className="text-cyan-400">288 files</span>...</div>
-                    <div className="hidden sm:flex flex-wrap gap-x-4 gap-y-1 text-zinc-400">
-                      <span>[ANALYZED] <span className="text-zinc-300">src/hooks/use-local-storage.ts</span></span>
-                    </div>
-                    <div className="text-zinc-400 pl-2 sm:pl-4 text-[10px] xs:text-xs sm:text-sm">Issues: <span className="text-amber-400 font-medium">10</span> | Layers: <span className="text-cyan-400">4, 5</span></div>
-                    <div className="flex items-center gap-1 sm:gap-2 mt-1 sm:mt-2">
-                      <span className="text-emerald-400">$</span>
-                      <span className="text-white truncate">neurolint fix . --all-layers</span>
-                    </div>
-                    <div className="text-emerald-400 text-[10px] xs:text-xs sm:text-sm">[SUCCESS] <span className="text-white">156 fixes</span> in 2.3s</div>
-                  </div>
-                  
-                  {/* Premium Play Button Overlay - Mobile optimized */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative">
-                      {/* Pulsing ring */}
-                      <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white/10 rounded-full animate-ping opacity-20" />
-                      {/* Main button */}
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-white/20 to-white/5 backdrop-blur-md rounded-full flex items-center justify-center border border-black group-hover:from-white/30 group-hover:to-white/10 group-hover:scale-110 transition-all duration-300 shadow-2xl">
-                        <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-white ml-0.5 sm:ml-1 drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Bottom status bar - Mobile optimized */}
-                <div className="bg-[#161b22] border-t border-black px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-zinc-500">
-                    <span className="flex items-center gap-1 sm:gap-2">
-                      <svg className="w-3 h-3 sm:w-4 sm:h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="font-mono">1:00</span>
-                    </span>
-                    <span className="hidden sm:flex items-center gap-2">
-                      <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>Real CLI Recording</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 sm:gap-2 text-white group-hover:text-emerald-400 transition-colors">
-                    <span className="text-xs sm:text-sm font-medium">Watch Demo</span>
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
+          <DemoCarousel />
           
-          {/* CTA for CLI Demo Section */}
           <InstallCTA className="mt-12" />
         </div>
       </section>
-      
-      {/* Demo Video Modal - Enterprise Edition */}
-      {demoModalOpen && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="demo-modal-title"
-        >
-          {/* Backdrop with blur */}
-          <div 
-            className="absolute inset-0 bg-black/95 backdrop-blur-md"
-            onClick={() => setDemoModalOpen(false)}
-          />
-          
-          {/* Modal Content */}
-          <div className="relative w-full max-w-6xl max-h-[90vh] overflow-hidden animate-fade-in-blur">
-            {/* Outer glow */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/30 via-cyan-500/30 to-blue-500/30 rounded-2xl blur-md opacity-50" />
-            
-            <div className="relative bg-[#0d1117] rounded-2xl border border-black shadow-2xl overflow-hidden">
-              {/* macOS-style Modal Header */}
-              <div className="flex items-center justify-between px-4 py-3 bg-[#161b22] border-b border-black">
-                <div className="flex items-center gap-4">
-                  {/* Traffic lights - functional */}
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setDemoModalOpen(false)}
-                      className="w-3 h-3 rounded-full bg-[#ff5f57] hover:bg-[#ff5f57]/80 transition-colors shadow-sm shadow-red-500/30 group"
-                      aria-label="Close"
-                    >
-                      <span className="sr-only">Close</span>
-                    </button>
-                    <div className="w-3 h-3 rounded-full bg-[#febc2e] shadow-sm shadow-yellow-500/30" />
-                    <div className="w-3 h-3 rounded-full bg-[#28c840] shadow-sm shadow-green-500/30" />
-                  </div>
-                  {/* Title */}
-                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#0d1117] rounded-lg border border-black">
-                    <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <h3 id="demo-modal-title" className="text-sm text-zinc-400 font-mono">neurolint-demo</h3>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {/* Live badge */}
-                  <div className="hidden md:flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 rounded-full border border-black">
-                    <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                    <span className="text-emerald-400 text-xs font-medium">LIVE</span>
-                  </div>
-                  {/* Close button */}
-                  <button
-                    onClick={() => setDemoModalOpen(false)}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 text-zinc-500 hover:text-white"
-                    aria-label="Close demo"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-              
-              {/* Player Container */}
-              <div className="relative overflow-hidden bg-[#0d1117]">
-                <AsciinemaPlayerComponent />
-              </div>
-              
-              {/* Modal Footer - Minimal */}
-              <div className="px-4 py-3 bg-[#161b22] border-t border-black flex items-center justify-between">
-                <div className="flex items-center gap-4 text-sm text-zinc-500">
-                  <span className="hidden sm:block">Hover for controls</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 bg-zinc-800 rounded border border-black font-mono text-xs text-zinc-400">Space</kbd>
-                    <span className="text-xs text-zinc-500">pause/play</span>
-                  </div>
-                  <div className="hidden md:flex items-center gap-2">
-                    <kbd className="px-2 py-1 bg-zinc-800 rounded border border-black font-mono text-xs text-zinc-400">Esc</kbd>
-                    <span className="text-xs text-zinc-500">close</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Interactive Demo Section */}
-      <div ref={demoSectionRef} id="comprehensive-demo" className={`transition-all duration-1000 transform ${
+      <div ref={demoSectionRef} className={`transition-all duration-1000 transform ${
         demoSectionInView
           ? 'opacity-100 translate-y-0'
           : 'opacity-0 translate-y-20'
@@ -935,28 +566,22 @@ export default function Index() {
       {/* Layers Documentation Section */}
       <LayersDocSection />
 
-      {/* Featured On Section - Static Grid */}
-      <section className="py-16 md:py-24 border-t border-zinc-800/50">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="text-center mb-10 md:mb-12">
-            <p className="text-sm uppercase tracking-widest text-zinc-500 font-medium">
-              Featured On
-            </p>
-          </div>
-          
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 md:gap-12">
+      {/* Featured On Section */}
+      <section className="py-12 md:py-16">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-60 hover:opacity-80 transition-opacity duration-500">
             <a 
               href="https://www.producthunt.com/products/neurolint-cli?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-neurolint-cli" 
               target="_blank"
               rel="noopener noreferrer"
-              className="group transition-all duration-300 hover:scale-105 hover:opacity-90"
+              className="transition-all duration-300 hover:scale-105"
             >
               <img 
                 src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1043969&theme=dark&t=1764635497036" 
                 alt="NeuroLint CLI on Product Hunt" 
-                width="220" 
-                height="48"
-                className="h-10 sm:h-12 w-auto drop-shadow-lg"
+                width="200" 
+                height="44"
+                className="h-9 sm:h-10 w-auto grayscale hover:grayscale-0 transition-all duration-300"
               />
             </a>
             
@@ -964,44 +589,14 @@ export default function Index() {
               href="https://startupfa.me/s/neurolint-cli?utm_source=neurolint.dev" 
               target="_blank"
               rel="noopener noreferrer"
-              className="group transition-all duration-300 hover:scale-105 hover:opacity-90"
+              className="transition-all duration-300 hover:scale-105"
             >
               <img 
                 src="https://startupfa.me/badges/featured/dark-small-rounded.webp" 
                 alt="Featured on Startup Fame" 
-                width="200" 
-                height="32"
-                className="h-8 sm:h-9 w-auto drop-shadow-lg"
-              />
-            </a>
-            
-            <a 
-              href="https://dang.ai/" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group transition-all duration-300 hover:scale-105 hover:opacity-90"
-            >
-              <img 
-                src="https://cdn.prod.website-files.com/63d8afd87da01fb58ea3fbcb/6487e2868c6c8f93b4828827_dang-badge.png" 
-                alt="Featured on Dang.ai" 
-                width="140" 
-                height="48"
-                className="h-10 sm:h-12 w-auto drop-shadow-lg"
-              />
-            </a>
-            
-            <a 
-              href="https://wired.business" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group transition-all duration-300 hover:scale-105 hover:opacity-90"
-            >
-              <img 
-                src="https://wired.business/badge0-dark.svg" 
-                alt="Featured on Wired Business" 
                 width="180" 
-                height="48"
-                className="h-10 sm:h-12 w-auto drop-shadow-lg"
+                height="28"
+                className="h-7 sm:h-8 w-auto grayscale hover:grayscale-0 transition-all duration-300"
               />
             </a>
             
@@ -1009,13 +604,13 @@ export default function Index() {
               href="https://github.com/Alcatecablee/Neurolint-CLI/stargazers" 
               target="_blank"
               rel="noopener noreferrer"
-              className="group transition-all duration-300 hover:scale-105 hover:opacity-90"
+              className="transition-all duration-300 hover:scale-105"
             >
               <img 
                 src="https://img.shields.io/github/stars/Alcatecablee/Neurolint-CLI?style=for-the-badge&logo=github&logoColor=white&labelColor=181717&color=181717" 
                 alt="GitHub Stars" 
-                height="28"
-                className="h-7 sm:h-8 w-auto drop-shadow-lg"
+                height="24"
+                className="h-6 sm:h-7 w-auto"
               />
             </a>
           </div>

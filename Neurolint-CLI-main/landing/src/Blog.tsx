@@ -1,3 +1,19 @@
+/**
+ * Copyright (c) 2025 NeuroLint
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { LandingFooter } from "./LandingFooter";
@@ -18,36 +34,102 @@ interface BlogPost {
 const blogPosts: BlogPost[] = [
   {
     slug: "cve-2025-55182-react-server-components-rce",
-    title: "CVE-2025-55182: Critical React Server Components RCE Vulnerability - One-Command Fix",
-    description: "A critical remote code execution vulnerability (CVSS 10.0) affects all React 19 apps using Server Components. Learn how to patch immediately with a single NeuroLint command.",
-    date: "2025-12-03",
-    readTime: "5 min read",
+    title: "CVE-2025-55182: Critical React Server Components RCE Vulnerability - Complete Guide",
+    description: "A critical remote code execution vulnerability (CVSS 10.0) affects React 19 apps using Server Components. Learn about threat actors, exploitation timeline, detection, and patching.",
+    date: "2025-12-08",
+    readTime: "12 min read",
     author: "NeuroLint Team",
     category: "Security",
-    tags: ["Security", "CVE", "React 19", "Next.js", "RCE"],
+    tags: ["Security", "CVE", "React 19", "Next.js", "RCE", "Threat Intelligence"],
     featured: true,
   },
   {
-    slug: "fix-react-nextjs-hydration-errors-complete-guide",
-    title: "How to Fix React & Next.js Hydration Errors: The Complete 2025 Guide",
-    description: "Learn why hydration mismatches happen, how to identify them, and the proven strategies to fix 'window is not defined', 'document is not defined', and other SSR errors automatically.",
-    date: "2025-01-15",
-    readTime: "12 min read",
+    slug: "react2shell-cve-2025-55182-exploit-explained",
+    title: "React2Shell Explained: How CVE-2025-55182 Enables Remote Code Execution in React Apps",
+    description: "Deep dive into React2Shell (CVE-2025-55182) - the critical unauthenticated RCE vulnerability in React Server Components Flight protocol. Understand the attack vector, proof of concept, and how to protect your applications.",
+    date: "2025-12-08",
+    readTime: "14 min read",
     author: "NeuroLint Team",
-    category: "Tutorials",
-    tags: ["React", "Next.js", "Hydration", "SSR", "Debugging"],
-    featured: false,
+    category: "Security",
+    tags: ["React2Shell", "CVE-2025-55182", "RCE", "React 19", "Flight Protocol", "Security"],
+    featured: true,
   },
   {
-    slug: "7-layer-code-fixing-pipeline-explained",
-    title: "The 7-Layer Code Fixing Pipeline: How NeuroLint Transforms Your Codebase",
-    description: "A deep dive into how NeuroLint's 7-layer pipeline systematically analyzes and fixes React/Next.js code - from configuration to adaptive pattern learning.",
-    date: "2025-01-10",
+    slug: "cve-2025-66478-nextjs-rce-vulnerability",
+    title: "CVE-2025-66478: Next.js Server Actions RCE - What You Need to Know",
+    description: "CVE-2025-66478 is the Next.js variant of the React2Shell vulnerability. Learn how this critical RCE affects Next.js 14 and 15 applications using Server Actions, and how to patch immediately with NeuroLint.",
+    date: "2025-12-07",
+    readTime: "11 min read",
+    author: "NeuroLint Team",
+    category: "Security",
+    tags: ["CVE-2025-66478", "Next.js", "Server Actions", "RCE", "React2Shell", "Security"],
+    featured: true,
+  },
+  {
+    slug: "detecting-post-exploitation-cve-2025-55182",
+    title: "Detecting Post-Exploitation: How to Know If CVE-2025-55182 Was Used Against You",
+    description: "Patching isn't enough. Learn how to detect if your React/Next.js application was already compromised by CVE-2025-55182 using NeuroLint's Layer 8 Security Forensics.",
+    date: "2025-12-07",
+    readTime: "10 min read",
+    author: "NeuroLint Team",
+    category: "Security",
+    tags: ["Security", "Forensics", "IoC", "Incident Response", "React 19"],
+    featured: true,
+  },
+  {
+    slug: "layer-8-security-forensics-deep-dive",
+    title: "Layer 8 Security Forensics: Deep Dive into NeuroLint's Compromise Detection Engine",
+    description: "Explore NeuroLint's Layer 8 security forensics capabilities - 80+ IoC signatures, AST-based behavioral analysis, RSC-specific patterns, and baseline integrity checking.",
+    date: "2025-12-06",
     readTime: "15 min read",
     author: "NeuroLint Team",
     category: "Deep Dives",
-    tags: ["AST", "Code Transformation", "Architecture", "React", "Next.js"],
+    tags: ["Security", "AST", "Architecture", "Layer 8", "Forensics"],
     featured: false,
+  },
+  {
+    slug: "fix-react-nextjs-hydration-errors-complete-guide",
+    title: "How to Fix React Hydration Errors Automatically: Complete 2025 Guide",
+    description: "Fix 'window is not defined', 'document is not defined', and SSR hydration mismatches in React & Next.js. Learn the exact patterns that cause React hydration errors and how to fix them automatically with AST-based code transformation.",
+    date: "2025-12-05",
+    readTime: "12 min read",
+    author: "NeuroLint Team",
+    category: "Tutorials",
+    tags: ["React Hydration Error Fix", "Next.js SSR", "React Debugging", "Code Fixer"],
+    featured: true,
+  },
+  {
+    slug: "8-layer-code-fixing-pipeline-explained",
+    title: "Automated React Code Fixer: How the 8-Layer Pipeline Works (ESLint Alternative)",
+    description: "Discover how AST-based code transformation automatically fixes 700+ React and Next.js issues. Better than ESLint for automated fixes - deterministic results, no AI hallucinations, instant code repair.",
+    date: "2025-12-04",
+    readTime: "15 min read",
+    author: "NeuroLint Team",
+    category: "Deep Dives",
+    tags: ["React Code Fixer", "ESLint Alternative", "AST Transformation", "Automated Fixes"],
+    featured: true,
+  },
+  {
+    slug: "eslint-vs-neurolint-why-rule-based-fixing-wins",
+    title: "ESLint vs NeuroLint: Why Rule-Based Code Fixing Beats Linting in 2025",
+    description: "ESLint finds problems, NeuroLint fixes them. Compare the traditional linting approach vs automated AST-based code transformation. See why developers are switching from ESLint warnings to automatic fixes.",
+    date: "2025-12-10",
+    readTime: "10 min read",
+    author: "NeuroLint Team",
+    category: "Comparisons",
+    tags: ["ESLint Alternative", "React Code Fixer", "Linting", "Automated Fixes"],
+    featured: true,
+  },
+  {
+    slug: "react-19-migration-guide-breaking-changes-fixes",
+    title: "React 19 Migration Guide: Fix Breaking Changes Automatically (2025)",
+    description: "Upgrade from React 18 to React 19 without the headaches. This guide covers all React 19 breaking changes and shows how to automatically fix ReactDOM.render, act() imports, and deprecated APIs.",
+    date: "2025-12-10",
+    readTime: "14 min read",
+    author: "NeuroLint Team",
+    category: "Tutorials",
+    tags: ["React 19 Migration", "Breaking Changes", "Next.js Migration", "Automated Fixes"],
+    featured: true,
   },
 ];
 
@@ -57,7 +139,7 @@ const BlogCard: React.FC<{ post: BlogPost }> = ({ post }) => {
   return (
     <Link 
       to={`/blog/${post.slug}`}
-      className="group block bg-zinc-900/80 border border-black rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:border-zinc-700 hover:shadow-blue-500/5"
+      className="group block bg-zinc-900/80 border border-black rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:border-black/80 hover:shadow-white/5"
     >
       <div className="aspect-video relative overflow-hidden bg-zinc-800/50">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -82,7 +164,7 @@ const BlogCard: React.FC<{ post: BlogPost }> = ({ post }) => {
             {post.readTime}
           </span>
         </div>
-        <h2 className="text-xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors line-clamp-2">
+        <h2 className="text-xl font-bold text-white mb-3 group-hover:text-gray-300 transition-colors line-clamp-2">
           {post.title}
         </h2>
         <p className="text-gray-400 text-sm mb-4 line-clamp-3">
@@ -109,10 +191,14 @@ export const Blog: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
-    document.title = "Blog | NeuroLint - React & Next.js Code Fixing Guides";
+    document.title = "React Code Fixer Blog | Fix Hydration Errors, ESLint Issues & Security Bugs - NeuroLint";
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
-      metaDesc.setAttribute('content', 'Expert guides on fixing React & Next.js bugs, understanding hydration errors, and automating code quality improvements with NeuroLint.');
+      metaDesc.setAttribute('content', 'Learn how to fix React hydration errors, Next.js migration issues, and automate ESLint fixes. Expert guides on React debugging, code transformation, and security vulnerability detection for 2025.');
+    }
+    const metaKeywords = document.querySelector('meta[name="keywords"]');
+    if (metaKeywords) {
+      metaKeywords.setAttribute('content', 'React code fixer, fix React hydration errors, ESLint alternative, React debugging guide, Next.js migration tool, CVE-2025-55182, React Server Components security, automated bug fixer, React 19 migration');
     }
   }, []);
 
@@ -198,13 +284,17 @@ export const Blog: React.FC = () => {
                   Blog
                 </Link>
                 <a 
-                  href="https://github.com/Alcatecablee/Neurolint-CLI/blob/main/CLI_USAGE.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/docs"
                   className="px-4 py-2 min-h-[44px] flex items-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 text-sm font-medium"
                 >
                   Docs
                 </a>
+                <Link 
+                  to="/security"
+                  className="px-4 py-2 min-h-[44px] flex items-center text-red-400 hover:text-red-300 hover:bg-red-500/5 rounded-lg transition-all duration-200 text-sm font-medium"
+                >
+                  Security
+                </Link>
                 <div className="w-px h-6 bg-white/10 mx-2"></div>
                 <a 
                   href="https://github.com/Alcatecablee/Neurolint-CLI"
@@ -250,13 +340,18 @@ export const Blog: React.FC = () => {
                 Blog
               </Link>
               <a 
-                href="https://github.com/Alcatecablee/Neurolint-CLI/blob/main/CLI_USAGE.md"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/docs"
                 className="block px-4 py-3 min-h-[48px] text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 text-base font-medium touch-manipulation"
               >
                 Docs
               </a>
+              <Link 
+                to="/security"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-3 min-h-[48px] text-red-400 hover:text-red-300 hover:bg-red-500/5 rounded-lg transition-all duration-200 text-base font-medium touch-manipulation"
+              >
+                Security
+              </Link>
               <div className="border-t border-black my-3"></div>
               <div className="flex items-center gap-3 px-4">
                 <a 
@@ -284,19 +379,15 @@ export const Blog: React.FC = () => {
         </nav>
 
         <main className="relative pt-32 pb-20 px-4">
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-blue-500/10 to-purple-600/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-gradient-to-tl from-green-500/5 to-blue-600/5 rounded-full blur-3xl"></div>
-          </div>
 
           <div className="max-w-5xl mx-auto relative z-10">
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-black rounded-full mb-6">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-                <span className="text-blue-400 text-sm font-medium">Developer Resources</span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 border border-black rounded-full mb-6">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" />
+                <span className="text-gray-300 text-sm font-medium">Developer Resources</span>
               </div>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-black mb-6 tracking-tight">
-                NeuroLint <span className="text-blue-400">Blog</span>
+                NeuroLint <span className="text-gray-400">Blog</span>
               </h1>
               <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto">
                 Expert guides on fixing React & Next.js bugs, understanding hydration errors, and automating code quality improvements.

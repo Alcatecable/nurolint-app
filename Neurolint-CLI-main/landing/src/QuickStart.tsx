@@ -1,3 +1,19 @@
+/**
+ * Copyright (c) 2025 NeuroLint
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 import { Copy, Check, X, Menu } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -164,9 +180,7 @@ export function QuickStart() {
                 FAQ
               </a>
               <a 
-                href="https://github.com/Alcatecablee/Neurolint-CLI/blob/main/CLI_USAGE.md"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/docs"
                 className="px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 text-sm font-medium"
               >
                 Docs
@@ -236,9 +250,7 @@ export function QuickStart() {
                   FAQ
                 </a>
                 <a 
-                  href="https://github.com/Alcatecablee/Neurolint-CLI/blob/main/CLI_USAGE.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/docs"
                   className="text-gray-300 hover:text-white transition-all duration-200 text-base font-medium py-3 px-4 rounded-lg hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/50"
                   role="menuitem"
                 >

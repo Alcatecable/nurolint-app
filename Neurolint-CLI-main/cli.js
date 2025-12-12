@@ -73,8 +73,18 @@ const LAYER_NAMES = {
   4: 'hydration',
   5: 'nextjs',
   6: 'testing',
-  7: 'adaptive'
+  7: 'adaptive',
+  8: 'security-forensics'
 };
+
+// Layer 8: Security Forensics (lazy loaded)
+let Layer8SecurityForensics = null;
+function getLayer8() {
+  if (!Layer8SecurityForensics) {
+    Layer8SecurityForensics = require('./scripts/fix-layer-8-security');
+  }
+  return Layer8SecurityForensics;
+}
 
 // Smart Layer Selector for analyzing and recommending layers
 class SmartLayerSelector {
@@ -999,7 +1009,8 @@ async function handleLayers(options, spinner) {
     { id: 4, name: 'Hydration', description: 'Guards client-side APIs for SSR' },
     { id: 5, name: 'Next.js', description: 'Optimizes App Router with directives' },
     { id: 6, name: 'Testing', description: 'Adds error boundaries, prop types, loading states' },
-    { id: 7, name: 'Adaptive Pattern Learning', description: 'Learns and applies patterns from prior fixes' }
+    { id: 7, name: 'Adaptive Pattern Learning', description: 'Learns and applies patterns from prior fixes' },
+    { id: 8, name: 'Security Forensics', description: 'Detects IoCs, supply chain attacks, and CVE-2025-55182 vulnerabilities' }
   ];
 
   if (options.verbose) {
@@ -2697,6 +2708,26 @@ Analysis Commands:
 
 Security Commands:
   security:cve-2025-55182 [path]  Patch CVE-2025-55182 React Server Components RCE (--fix to apply)
+  security:scan-compromise [path] Detect malware, backdoors, and IOCs in codebase (~30s-5min)
+  security:create-baseline [path] Create file hash baseline for drift detection (~10s)
+  security:compare-baseline [path] Detect unauthorized changes since baseline (~15s)
+  security:incident-response [path] Full forensic scan with timeline analysis (~2-10min)
+  security:harden-actions [path]  Analyze/harden server actions (--quarantine to fix)
+  security:mitigation-playbook    Generate compensating controls when patching blocked
+
+Security Options:
+  --quick                 Fast scan: common IOC patterns only (~30s)
+  (default)               Standard mode: balanced analysis (~2min, no flag needed)
+  --deep                  Deep scan: extended pattern matching (~3min)
+  --paranoid              Maximum depth: heuristic + behavioral analysis (~5-10min)
+  --full                  Full forensic mode for incident-response (all commits)
+  --fail-on=<level>       Exit non-zero if severity >= level (low|medium|high|critical)
+  --json                  Output results as JSON for CI/CD pipelines
+  --baseline=<file>       Use custom baseline file path (for compare-baseline)
+
+Exit Codes (security commands):
+  0 = No findings (or below --fail-on threshold)
+  1 = Findings detected at or above --fail-on threshold
 
 Configuration Commands:
   init-config             Generate or display configuration
@@ -2738,6 +2769,10 @@ Examples:
   neurolint analyze src/ --verbose
   neurolint fix . --layers=1,2,7 --dry-run
   neurolint components fix src/ --verbose
+  neurolint security:scan-compromise . --quick
+  neurolint security:scan-compromise . --paranoid --fail-on=critical
+  neurolint security:create-baseline .
+  neurolint security:incident-response . --json
 `);
         process.exit(0);
       case 'version':
@@ -2856,6 +2891,30 @@ Examples:
       case 'security:cve-2025-55182':
         // Handle CVE-2025-55182 security fix command
         await handleCVE202555182(targetPath, options, spinner, args);
+        break;
+      case 'security:scan-compromise':
+        // Handle Layer 8 Security Forensics - Compromise Scan
+        await handleSecurityScanCompromise(targetPath, options, spinner, args);
+        break;
+      case 'security:create-baseline':
+        // Handle Layer 8 Security Forensics - Create Baseline
+        await handleSecurityCreateBaseline(targetPath, options, spinner, args);
+        break;
+      case 'security:compare-baseline':
+        // Handle Layer 8 Security Forensics - Compare Baseline
+        await handleSecurityCompareBaseline(targetPath, options, spinner, args);
+        break;
+      case 'security:incident-response':
+        // Handle Layer 8 Security Forensics - Incident Response
+        await handleSecurityIncidentResponse(targetPath, options, spinner, args);
+        break;
+      case 'security:harden-actions':
+        // Handle Server Action Hardening
+        await handleSecurityHardenActions(targetPath, options, spinner, args);
+        break;
+      case 'security:mitigation-playbook':
+        // Generate mitigation playbook
+        await handleSecurityMitigationPlaybook(targetPath, options, spinner, args);
         break;
       case 'check-turbopack':
         // Handle Turbopack migration check command
@@ -3073,6 +3132,26 @@ Analysis Commands:
 
 Security Commands:
   security:cve-2025-55182 [path]  Patch CVE-2025-55182 React Server Components RCE (--fix to apply)
+  security:scan-compromise [path] Detect malware, backdoors, and IOCs in codebase (~30s-5min)
+  security:create-baseline [path] Create file hash baseline for drift detection (~10s)
+  security:compare-baseline [path] Detect unauthorized changes since baseline (~15s)
+  security:incident-response [path] Full forensic scan with timeline analysis (~2-10min)
+  security:harden-actions [path]  Analyze/harden server actions (--quarantine to fix)
+  security:mitigation-playbook    Generate compensating controls when patching blocked
+
+Security Options:
+  --quick                 Fast scan: common IOC patterns only (~30s)
+  (default)               Standard mode: balanced analysis (~2min, no flag needed)
+  --deep                  Deep scan: extended pattern matching (~3min)
+  --paranoid              Maximum depth: heuristic + behavioral analysis (~5-10min)
+  --full                  Full forensic mode for incident-response (all commits)
+  --fail-on=<level>       Exit non-zero if severity >= level (low|medium|high|critical)
+  --json                  Output results as JSON for CI/CD pipelines
+  --baseline=<file>       Use custom baseline file path (for compare-baseline)
+
+Exit Codes (security commands):
+  0 = No findings (or below --fail-on threshold)
+  1 = Findings detected at or above --fail-on threshold
 
 Configuration Commands:
   init-config             Generate or display configuration
@@ -3161,6 +3240,11 @@ Examples:
   neurolint rules --delete=0
   neurolint rules --reset
   neurolint health
+  neurolint security:scan-compromise . --quick
+  neurolint security:scan-compromise . --paranoid --fail-on=critical
+  neurolint security:create-baseline .
+  neurolint security:compare-baseline .
+  neurolint security:incident-response . --json
 `);
   printCommunityCTA('help');
   process.exit(0);
@@ -4878,7 +4962,7 @@ async function handleCVE202555182(targetPath, options, spinner, args) {
   spinner.text = 'Creating backup...';
   
   const backupManager = createBackupManager({ verbose: options.verbose });
-  const backupPath = await backupManager.createBackup([packageJsonPath]);
+  const backupResult = await backupManager.createBackup(packageJsonPath, 'security-patch');
   
   spinner.text = 'Applying security patches...';
   
@@ -4913,12 +4997,575 @@ async function handleCVE202555182(targetPath, options, spinner, args) {
     console.log(`  \x1b[32m[PATCHED]\x1b[0m ${fix.package} -> ${fix.version}`);
   }
   
+  spinner.text = 'Verifying lock file integrity...';
+  
+  try {
+    const { DependencyAssuranceModule } = require('./scripts/fix-layer-8-security/dependency-assurance');
+    const depAssurance = new DependencyAssuranceModule({ verbose: options.verbose, projectPath: resolvedPath });
+    const auditResult = await depAssurance.audit(resolvedPath);
+    
+    if (auditResult.lockFileExists) {
+      if (auditResult.vulnerabilities.length > 0 || auditResult.transitiveIssues.length > 0) {
+        spinner.warn('Lock file still contains vulnerable versions!');
+        console.log(depAssurance.formatReport(auditResult));
+        console.log('\n\x1b[33mIMPORTANT:\x1b[0m Your lock file has not been updated.');
+        console.log('Run the following commands to complete the patch:\n');
+        console.log('  \x1b[1mrm -rf node_modules package-lock.json\x1b[0m');
+        console.log('  \x1b[1mnpm install\x1b[0m');
+        console.log('  \x1b[1mnpx @neurolint/cli security:cve-2025-55182 . --dry-run\x1b[0m  (verify fix)\n');
+      } else {
+        spinner.succeed('Lock file verified - no vulnerable versions detected');
+      }
+    } else {
+      spinner.info('No lock file found. Run npm install to generate one.');
+    }
+  } catch (e) {
+    if (options.verbose) {
+      console.log('\x1b[2mDependency assurance check skipped: ' + e.message + '\x1b[0m');
+    }
+  }
+  
   console.log('\n\x1b[1mNext Steps:\x1b[0m');
   console.log('\n  1. Run \x1b[1mnpm install\x1b[0m to install patched versions');
-  console.log('  2. Test your application');
-  console.log('  3. Deploy the security update');
+  console.log('  2. Run \x1b[1mnpx @neurolint/cli security:cve-2025-55182 . --dry-run\x1b[0m to verify');
+  console.log('  3. Test your application');
+  console.log('  4. Deploy the security update');
   
-  console.log('\n\x1b[2mBackup created at: ' + backupPath + '\x1b[0m');
+  if (backupResult.success) {
+    console.log('\n\x1b[2mBackup created at: ' + backupResult.backupPath + '\x1b[0m');
+  } else {
+    console.log('\n\x1b[33mWarning: Backup could not be created: ' + backupResult.error + '\x1b[0m');
+  }
   console.log('\x1b[2mUse "neurolint restore" to revert if needed.\x1b[0m\n');
+}
+
+/**
+ * Handle Layer 8 Security Forensics - Compromise Scan
+ * Scans for indicators of compromise (IoCs) in the codebase
+ */
+async function handleSecurityScanCompromise(targetPath, options, spinner, args) {
+  const resolvedPath = targetPath ? path.resolve(targetPath) : process.cwd();
+  const isVerbose = args.includes('--verbose') || args.includes('-v');
+  const isJsonOutput = args.includes('--json');
+  const mode = args.includes('--deep') ? 'deep' : 
+               args.includes('--quick') ? 'quick' : 
+               args.includes('--paranoid') ? 'paranoid' : 'standard';
+  
+  const failOnArg = args.find(a => a.startsWith('--fail-on='));
+  const failOn = failOnArg ? failOnArg.split('=')[1] : 'critical';
+  
+  spinner.text = 'Initializing Layer 8 Security Forensics...';
+  
+  try {
+    const Layer8 = getLayer8();
+    const layer8 = new Layer8({
+      mode,
+      verbose: isVerbose,
+      failOn
+    });
+    
+    spinner.text = `Scanning for indicators of compromise (${mode} mode)...`;
+    
+    const scanResult = await layer8.scanCompromise(resolvedPath, {
+      verbose: isVerbose,
+      onProgress: (progress) => {
+        if (!isJsonOutput) {
+          spinner.text = `Scanning files... ${progress.processed}/${progress.total} (${progress.currentFindings} findings)`;
+        }
+      }
+    });
+    
+    spinner.stop();
+    
+    if (isJsonOutput) {
+      console.log(layer8.generateJSONReport(scanResult, { targetPath: resolvedPath, mode }));
+    } else {
+      layer8.printReport(scanResult, { targetPath: resolvedPath });
+    }
+    
+    const severity = scanResult.findings?.length > 0 
+      ? scanResult.findings.some(f => f.severity === 'critical') ? 'critical'
+        : scanResult.findings.some(f => f.severity === 'high') ? 'high'
+        : scanResult.findings.some(f => f.severity === 'medium') ? 'medium'
+        : 'low'
+      : 'clean';
+    
+    const failLevels = ['critical', 'high', 'medium', 'low'];
+    const shouldFail = failLevels.indexOf(severity) >= 0 && 
+                       failLevels.indexOf(severity) <= failLevels.indexOf(failOn);
+    
+    if (shouldFail && scanResult.findings?.length > 0) {
+      process.exit(1);
+    }
+    
+  } catch (error) {
+    spinner.fail('Security scan failed');
+    console.error('\nError:', error.message);
+    if (isVerbose) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle Layer 8 Security Forensics - Create Baseline
+ * Creates an integrity baseline for future comparison
+ */
+async function handleSecurityCreateBaseline(targetPath, options, spinner, args) {
+  const resolvedPath = targetPath ? path.resolve(targetPath) : process.cwd();
+  const isVerbose = args.includes('--verbose') || args.includes('-v');
+  
+  const outputArg = args.find(a => a.startsWith('--output=') || a.startsWith('-o='));
+  const outputPath = outputArg ? outputArg.split('=')[1] : null;
+  
+  spinner.text = 'Creating security baseline...';
+  
+  try {
+    const Layer8 = getLayer8();
+    const layer8 = new Layer8({
+      verbose: isVerbose
+    });
+    
+    const result = await layer8.createBaseline(resolvedPath, {
+      output: outputPath,
+      onProgress: ({ filesScanned, done }) => {
+        if (done) {
+          spinner.text = `Indexing ${filesScanned} files for baseline...`;
+        } else {
+          spinner.text = `Scanning files... (${filesScanned} indexed)`;
+        }
+      }
+    });
+    
+    if (result.success) {
+      spinner.succeed('Security baseline created!');
+      console.log(`\n  Baseline saved to: ${result.baselinePath}`);
+      console.log(`  Files indexed: ${result.fileCount}`);
+      console.log(`  Created at: ${result.created}`);
+      console.log('\n  Use "neurolint security:compare-baseline" to detect drift.\n');
+    } else {
+      spinner.fail('Failed to create baseline');
+      console.error('\nError:', result.error);
+    }
+    
+  } catch (error) {
+    spinner.fail('Baseline creation failed');
+    console.error('\nError:', error.message);
+    if (isVerbose) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle Layer 8 Security Forensics - Compare Baseline
+ * Compares current state against a previously created baseline
+ */
+async function handleSecurityCompareBaseline(targetPath, options, spinner, args) {
+  const resolvedPath = targetPath ? path.resolve(targetPath) : process.cwd();
+  const isVerbose = args.includes('--verbose') || args.includes('-v');
+  const isJsonOutput = args.includes('--json');
+  
+  const baselineArg = args.find(a => a.startsWith('--baseline='));
+  const baselinePath = baselineArg 
+    ? baselineArg.split('=')[1] 
+    : path.join(resolvedPath, '.neurolint', 'security-baseline.json');
+  
+  spinner.text = 'Comparing against baseline...';
+  
+  try {
+    await fs.access(baselinePath);
+  } catch (error) {
+    spinner.fail('Baseline not found');
+    console.error(`\nBaseline file not found: ${baselinePath}`);
+    console.log('\nCreate a baseline first with:');
+    console.log('  neurolint security:create-baseline .\n');
+    process.exit(1);
+  }
+  
+  try {
+    const Layer8 = getLayer8();
+    const layer8 = new Layer8({
+      verbose: isVerbose
+    });
+    
+    const result = await layer8.compareBaseline(resolvedPath, baselinePath, {
+      onProgress: ({ filesScanned, currentFile, done }) => {
+        if (done) {
+          spinner.text = `Comparing ${filesScanned} files against baseline...`;
+        } else {
+          spinner.text = `Scanning files... (${filesScanned} scanned)`;
+        }
+      }
+    });
+    
+    spinner.stop();
+    
+    if (isJsonOutput) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log('\n' + '='.repeat(60));
+      console.log('  BASELINE COMPARISON RESULTS');
+      console.log('='.repeat(60) + '\n');
+      
+      console.log(`  Baseline created: ${result.baselineDate}`);
+      console.log(`  Comparison time:  ${new Date().toISOString()}\n`);
+      
+      if (result.comparison.hasChanges) {
+        console.log('  \x1b[33m⚠ Changes detected since baseline:\x1b[0m\n');
+        
+        if (result.summary.added > 0) {
+          console.log(`    \x1b[32m+ ${result.summary.added} files added\x1b[0m`);
+          if (isVerbose) {
+            result.comparison.added.slice(0, 10).forEach(f => console.log(`      ${f}`));
+            if (result.comparison.added.length > 10) {
+              console.log(`      ... and ${result.comparison.added.length - 10} more`);
+            }
+          }
+        }
+        
+        if (result.summary.removed > 0) {
+          console.log(`    \x1b[31m- ${result.summary.removed} files removed\x1b[0m`);
+          if (isVerbose) {
+            result.comparison.removed.slice(0, 10).forEach(f => console.log(`      ${f}`));
+            if (result.comparison.removed.length > 10) {
+              console.log(`      ... and ${result.comparison.removed.length - 10} more`);
+            }
+          }
+        }
+        
+        if (result.summary.modified > 0) {
+          console.log(`    \x1b[33m~ ${result.summary.modified} files modified\x1b[0m`);
+          if (isVerbose) {
+            result.comparison.modified.slice(0, 10).forEach(f => console.log(`      ${f}`));
+            if (result.comparison.modified.length > 10) {
+              console.log(`      ... and ${result.comparison.modified.length - 10} more`);
+            }
+          }
+        }
+        
+        console.log(`\n    ${result.summary.unchanged} files unchanged`);
+        console.log('\n  Run with --verbose to see affected files.');
+        console.log('  Run security:scan-compromise to check for threats.\n');
+      } else {
+        console.log('  \x1b[32m✓ No changes detected since baseline.\x1b[0m');
+        console.log('  Your codebase integrity is intact.\n');
+      }
+    }
+    
+  } catch (error) {
+    spinner.fail('Baseline comparison failed');
+    console.error('\nError:', error.message);
+    if (isVerbose) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle Layer 8 Security Forensics - Incident Response
+ * Comprehensive forensic analysis for security incident response
+ */
+async function handleSecurityIncidentResponse(targetPath, options, spinner, args) {
+  const resolvedPath = targetPath ? path.resolve(targetPath) : process.cwd();
+  const isVerbose = args.includes('--verbose') || args.includes('-v');
+  const isJsonOutput = args.includes('--json');
+  const isQuick = args.includes('--quick');
+  const isFull = args.includes('--full');
+  
+  const lookbackArg = args.find(a => a.startsWith('--lookback='));
+  const lookbackDays = lookbackArg ? parseInt(lookbackArg.split('=')[1], 10) : 30;
+  
+  const outputArg = args.find(a => a.startsWith('--output=') || a.startsWith('-o='));
+  const outputPath = outputArg ? outputArg.split('=')[1] : null;
+  
+  spinner.text = 'Initializing incident response analysis...';
+  
+  try {
+    const Layer8 = getLayer8();
+    const layer8 = new Layer8({
+      mode: isQuick ? 'quick' : (isFull ? 'paranoid' : 'standard'),
+      verbose: isVerbose
+    });
+    
+    const incidentOptions = {
+      verbose: isVerbose,
+      lookbackDays,
+      includeTimeline: !isQuick,
+      includeDependencies: true,
+      includeBehavioral: !isQuick,
+      includeAllCommits: isFull,
+      onProgress: (progress) => {
+        if (!isJsonOutput) {
+          const phase = progress.phase || 'analysis';
+          const status = progress.status || 'running';
+          const message = progress.message || `Processing ${phase}...`;
+          
+          if (status === 'starting') {
+            spinner.text = message;
+          } else if (status === 'complete') {
+            spinner.text = `${phase}: ${progress.findings || 0} findings`;
+          }
+        }
+      }
+    };
+    
+    spinner.text = 'Running forensic analysis...';
+    
+    const results = await layer8.incidentResponse(resolvedPath, incidentOptions);
+    
+    spinner.stop();
+    
+    if (isJsonOutput) {
+      const jsonReport = layer8.generateIncidentJSONReport(results, { prettyPrint: true });
+      
+      if (outputPath) {
+        const fsSync = require('fs');
+        fsSync.writeFileSync(outputPath, jsonReport, 'utf8');
+        console.log(`Incident report saved to: ${outputPath}`);
+      } else {
+        console.log(jsonReport);
+      }
+    } else {
+      layer8.printIncidentReport(results, { verbose: isVerbose });
+      
+      if (outputPath) {
+        const fsSync = require('fs');
+        const jsonReport = layer8.generateIncidentJSONReport(results, { prettyPrint: true });
+        fsSync.writeFileSync(outputPath, jsonReport, 'utf8');
+        console.log(`\n  Report also saved to: ${outputPath}\n`);
+      }
+    }
+    
+    if (results.summary.riskLevel === 'critical') {
+      console.log('\x1b[31m\x1b[1mCRITICAL: Immediate action required!\x1b[0m\n');
+      process.exit(2);
+    } else if (results.summary.riskLevel === 'high') {
+      console.log('\x1b[33m\x1b[1mHIGH RISK: Urgent investigation recommended.\x1b[0m\n');
+      process.exit(1);
+    }
+    
+  } catch (error) {
+    spinner.fail('Incident response analysis failed');
+    console.error('\nError:', error.message);
+    if (isVerbose) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle Server Action Hardening
+ * Analyzes and optionally hardens server actions against exploitation
+ */
+async function handleSecurityHardenActions(targetPath, options, spinner, args) {
+  const resolvedPath = targetPath ? path.resolve(targetPath) : process.cwd();
+  const isVerbose = args.includes('--verbose') || args.includes('-v');
+  const isJsonOutput = args.includes('--json');
+  const isQuarantine = args.includes('--quarantine');
+  const isDryRun = args.includes('--dry-run');
+  
+  spinner.text = 'Initializing Server Action Hardening module...';
+  
+  try {
+    const { ServerActionHardening } = require('./scripts/fix-layer-8-security/server-action-hardening');
+    const hardener = new ServerActionHardening({
+      verbose: isVerbose,
+      projectPath: resolvedPath
+    });
+    
+    spinner.text = 'Scanning for server action files...';
+    
+    const glob = require('glob');
+    const fsp = require('fs').promises;
+    
+    const serverActionFiles = glob.sync('**/*.{js,jsx,ts,tsx}', {
+      cwd: resolvedPath,
+      ignore: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/build/**']
+    });
+    
+    const analysisResults = [];
+    let vulnerableCount = 0;
+    
+    for (let i = 0; i < serverActionFiles.length; i++) {
+      const file = serverActionFiles[i];
+      const filePath = path.join(resolvedPath, file);
+      
+      if (!isJsonOutput) {
+        spinner.text = `Analyzing server actions... ${i + 1}/${serverActionFiles.length} files`;
+      }
+      
+      try {
+        const code = await fsp.readFile(filePath, 'utf8');
+        if (code.includes("'use server'") || code.includes('"use server"')) {
+          const result = await hardener.analyze(code, filePath);
+          const issueCount = (result.dangerousCalls?.length || 0) + 
+                            (result.envExposures?.length || 0) + 
+                            (result.unsafePatterns?.length || 0);
+          if (result.isServerAction && issueCount > 0) {
+            result.filePath = filePath;
+            result.issues = [...(result.dangerousCalls || []), ...(result.envExposures || []), ...(result.unsafePatterns || [])];
+            analysisResults.push(result);
+            vulnerableCount += issueCount;
+          }
+        }
+      } catch (e) {
+        if (isVerbose) {
+          console.log(`\x1b[2mSkipped ${file}: ${e.message}\x1b[0m`);
+        }
+      }
+    }
+    
+    spinner.stop();
+    
+    if (analysisResults.length === 0) {
+      console.log('\n\x1b[32m[SECURE]\x1b[0m No vulnerable server actions detected.\n');
+      return;
+    }
+    
+    console.log(`\n\x1b[33m[WARNING]\x1b[0m Found ${vulnerableCount} issues in ${analysisResults.length} server action files:\n`);
+    
+    for (const result of analysisResults) {
+      console.log(hardener.formatReport(result));
+    }
+    
+    if (isQuarantine && !isDryRun) {
+      spinner.start();
+      spinner.text = 'Applying hardening transformations in quarantine mode...';
+      
+      let hardenedCount = 0;
+      for (const result of analysisResults) {
+        try {
+          const code = await fsp.readFile(result.filePath, 'utf8');
+          const hardenResult = await hardener.harden(code, result.filePath);
+          
+          if (hardenResult.success && hardenResult.transformedCode !== code) {
+            await fsp.writeFile(result.filePath, hardenResult.transformedCode, 'utf8');
+            hardenedCount++;
+          }
+        } catch (e) {
+          if (isVerbose) {
+            console.log(`\x1b[31mFailed to harden ${result.filePath}: ${e.message}\x1b[0m`);
+          }
+        }
+      }
+      
+      spinner.succeed(`Server action hardening complete - ${hardenedCount} files modified`);
+    } else if (isQuarantine && isDryRun) {
+      spinner.start();
+      spinner.text = 'Generating hardening preview (dry-run)...';
+      
+      for (const result of analysisResults) {
+        try {
+          const code = await fsp.readFile(result.filePath, 'utf8');
+          const hardenResult = await hardener.harden(code, result.filePath);
+          
+          if (hardenResult.success && hardenResult.transformations.length > 0) {
+            console.log(`\n\x1b[1m${result.filePath}\x1b[0m`);
+            console.log('  Proposed transformations:');
+            for (const t of hardenResult.transformations) {
+              console.log(`    - ${t.type}: ${t.description}`);
+            }
+          }
+        } catch (e) {
+          if (isVerbose) {
+            console.log(`\x1b[2mSkipped preview for ${result.filePath}: ${e.message}\x1b[0m`);
+          }
+        }
+      }
+      
+      spinner.succeed('Dry-run complete');
+      console.log('\n\x1b[2mRun with --quarantine (without --dry-run) to apply changes.\x1b[0m\n');
+    } else {
+      console.log('\n\x1b[33mNote:\x1b[0m Run with --quarantine to apply hardening transformations.');
+      console.log('\x1b[2mUse --quarantine --dry-run to preview changes first.\x1b[0m\n');
+    }
+    
+    if (isJsonOutput) {
+      console.log(JSON.stringify(analysisResults, null, 2));
+    }
+    
+  } catch (error) {
+    spinner.fail('Server action hardening failed');
+    console.error('\nError:', error.message);
+    if (isVerbose) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle Mitigation Playbook Generation
+ * Generates compensating controls when patching is blocked
+ */
+async function handleSecurityMitigationPlaybook(targetPath, options, spinner, args) {
+  const resolvedPath = targetPath ? path.resolve(targetPath) : process.cwd();
+  const isVerbose = args.includes('--verbose') || args.includes('-v');
+  const isJsonOutput = args.includes('--json');
+  
+  const outputArg = args.find(a => a.startsWith('--output=') || a.startsWith('-o='));
+  const outputPath = outputArg ? outputArg.split('=')[1] : null;
+  
+  const cveArg = args.find(a => a.startsWith('--cve='));
+  const cveId = cveArg ? cveArg.split('=')[1] : 'CVE-2025-55182';
+  
+  const reasonArg = args.find(a => a.startsWith('--reason='));
+  const blockReason = reasonArg ? reasonArg.split('=')[1] : 'unknown';
+  
+  spinner.text = 'Generating mitigation playbook...';
+  
+  try {
+    const { MitigationPlaybookGenerator } = require('./scripts/fix-layer-8-security/mitigation-playbook');
+    const playbook = new MitigationPlaybookGenerator({
+      verbose: isVerbose,
+      projectPath: resolvedPath
+    });
+    
+    spinner.text = 'Generating compensating controls...';
+    
+    const mitigationResult = await playbook.generate({
+      cveId,
+      blockReason,
+      projectPath: resolvedPath,
+      verbose: isVerbose
+    });
+    
+    spinner.stop();
+    
+    if (isJsonOutput) {
+      const jsonOutput = JSON.stringify(mitigationResult, null, 2);
+      if (outputPath) {
+        const fsSync = require('fs');
+        fsSync.writeFileSync(outputPath, jsonOutput, 'utf8');
+        console.log(`Mitigation playbook saved to: ${outputPath}`);
+      } else {
+        console.log(jsonOutput);
+      }
+    } else {
+      console.log(playbook.formatPlaybook(mitigationResult));
+      
+      if (outputPath) {
+        const fsSync = require('fs');
+        fsSync.writeFileSync(outputPath, JSON.stringify(mitigationResult, null, 2), 'utf8');
+        console.log(`\n  Playbook also saved to: ${outputPath}\n`);
+      }
+    }
+    
+    console.log('\n\x1b[33mIMPORTANT:\x1b[0m These are compensating controls, NOT a complete fix.');
+    console.log('Patching should remain the priority when dependencies allow.\n');
+    
+  } catch (error) {
+    spinner.fail('Mitigation playbook generation failed');
+    console.error('\nError:', error.message);
+    if (isVerbose) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
 }
 

